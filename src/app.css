@@ -1193,6 +1193,10 @@ body:has(.sheet[open]) {
   border-top: 1px solid var(--line);
 }
 
+.list-paper {
+  margin-bottom: 0.5rem;
+}
+
 .credits {
   max-width: 80rem;
   margin: 0 auto;

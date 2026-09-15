@@ -2,7 +2,7 @@
 /** @import { PrinterConnection } from "../printers/connection.js" */
 /** @import { Bitmap, Media } from "../printers/types.js" */
 /** @import { LabelSize } from "./label-size.js" */
-import { describeDesign, pageCount, renderDesign } from "../designs.js";
+import { describeDesign, pageCount, paperLength, renderDesign } from "../designs.js";
 import { drawBitmap, element, problemMessage, showMessage } from "./dom.js";
 import { preparePrinter } from "./printer-button.js";
 import { bindStepper } from "./stepper.js";
@@ -24,6 +24,7 @@ export function createPrintListDialog({ printer, labelSize, printList }) {
     empty: element("#list-empty", HTMLElement),
     items: element("#list-items", HTMLUListElement),
     template: element("#list-item", HTMLTemplateElement),
+    paper: element("#list-paper", HTMLElement),
     printAll: element("#print-all", HTMLButtonElement),
     status: element("#list-status", HTMLElement),
   };
@@ -153,10 +154,16 @@ export function createPrintListDialog({ printer, labelSize, printList }) {
   }
 
   function updatePrintAll() {
+    const media = labelSize.current;
     const labels = printList.items.reduce(
-      (sum, item) => sum + item.copies * pageCount(item.design, labelSize.current),
+      (sum, item) => sum + item.copies * pageCount(item.design, media),
       0,
     );
+    // On die-cut labels the number of labels already says how much of the roll is used.
+    ui.paper.hidden = labels === 0 || media.lengthMm > 0;
+    if (!ui.paper.hidden) {
+      ui.paper.textContent = `Uses about ${formatLength(paperLength(printList.items, media))} of the roll.`;
+    }
     if (printer.state.kind === "unsupported") {
       ui.printAll.disabled = true;
       ui.printAll.textContent = "Printing needs Chrome or Edge";
@@ -172,3 +179,7 @@ export function createPrintListDialog({ printer, labelSize, printList }) {
 
   showCount();
 }
+
+/** @param {number} mm */
+const formatLength = (mm) =>
+  mm < 1000 ? `${Math.max(1, Math.round(mm / 10))} cm` : `${(mm / 1000).toFixed(1)} m`;

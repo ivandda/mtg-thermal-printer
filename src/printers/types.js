@@ -23,6 +23,7 @@
  * @property {number} printableHeight  Printable area in dots.
  * @property {"rectangle" | "round"} shape
  * @property {number} dpi  Dots per inch, to draw things at a physical size.
+ * @property {number} [feedMargin]  Blank paper, in dots, fed at each end of a label on a continuous roll.
  */
 
 /**
