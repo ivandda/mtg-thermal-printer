@@ -12,7 +12,7 @@ Search Magic: The Gathering cards and tokens and print them as stickers on a the
 - **Create your own** cards and tokens, or customize any card. Saved in your browser, with backup to a file.
 - **Print markers**: The Monarch, Day and Night, trackers, keywords or your own, packed onto few labels.
 - **Print list**: queue labels with their own options and copies, and print them at once.
-- **Share** a card by its link.
+- **Share** a card by its link, including cards you made (text and Scryfall art).
 
 On 62 × 100 mm die-cut labels (Brother DK-11202) a card prints at 59 × 82 mm, about 94% of real size.
 
