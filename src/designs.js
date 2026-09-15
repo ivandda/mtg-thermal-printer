@@ -31,10 +31,11 @@ import { loadStoredImage } from "./token-store.js";
  */
 
 /**
- * A custom token, as saved in this browser.
+ * A custom card, as saved in this browser. Without a mana cost it's a token.
  * @typedef {object} Token
  * @property {string} id
  * @property {string} name
+ * @property {string} [manaCost]  e.g. "{2}{G}". Missing on tokens saved before cards had one.
  * @property {string} typeLine
  * @property {string} power
  * @property {string} toughness
@@ -76,7 +77,7 @@ export async function renderDesign(design, media) {
     const art = design.art && { image: await loadArt(design.art), arrangement: design.art };
     const text = {
       name: design.name,
-      manaCost: "",
+      manaCost: design.manaCost ?? "",
       typeLine: design.typeLine,
       rules: design.rules,
       stats: statsOf(design),
@@ -145,9 +146,15 @@ export function artBoxOf(design, media) {
  * @param {Token} token
  */
 export function isBlankToken(token) {
-  const { name, typeLine, power, toughness, rules, art } = token;
-  return !name.trim() && !typeLine.trim() && !power && !toughness && !rules.trim() && !art;
+  const { name, manaCost, typeLine, power, toughness, rules, art } = token;
+  return !name.trim() && !manaCost && !typeLine.trim() && !power && !toughness && !rules.trim() && !art;
 }
+
+/**
+ * "Custom card", or "Custom token" when it has no mana cost.
+ * @param {Token} token
+ */
+export const customKind = (token) => (token.manaCost ? "Custom card" : "Custom token");
 
 /** @param {{ power: string, toughness: string }} token */
 const statsOf = ({ power, toughness }) => (power || toughness ? `${power}/${toughness}` : "");
@@ -168,9 +175,9 @@ export function describeDesign(design) {
     return { name: "Markers", detail };
   }
   if (design.type === "token") {
-    const details = ["Custom token"];
+    const details = [customKind(design)];
     if (design.art && design.darkness !== "normal") details.push(design.darkness);
-    return { name: design.name.trim() || "Untitled token", detail: details.join(", ") };
+    return { name: design.name.trim() || "Untitled card", detail: details.join(", ") };
   }
   const { card, face, style, darkness, cropBorder, art } = design;
   const details = [`${card.set_name}, #${card.collector_number}`];

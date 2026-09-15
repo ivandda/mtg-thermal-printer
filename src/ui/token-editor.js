@@ -14,6 +14,7 @@ const SAVE_DELAY_MS = 400;
 const blankToken = () => ({
   id: crypto.randomUUID(),
   name: "",
+  manaCost: "",
   typeLine: "",
   power: "",
   toughness: "",
@@ -21,14 +22,14 @@ const blankToken = () => ({
 });
 
 /** @param {Token} token */
-const titleOf = (token) => token.name.trim() || "Untitled token";
+const titleOf = (token) => token.name.trim() || "Untitled card";
 
 /** @param {TokenArt | undefined} art */
 const storedImageOf = (art) => (art && "image" in art.source ? art.source.image : undefined);
 
 /**
- * The form for making a token, and the tokens saved in this browser. Tokens save themselves as
- * they are edited.
+ * The form for making a custom card or token, and the ones saved in this browser. They save
+ * themselves as they are edited.
  * @param {object} options
  * @param {PrintList} options.printList  Its labels can use images of tokens that were deleted.
  * @param {(token: Token) => void} options.onShow  Called whenever the token being made changes.
@@ -41,6 +42,7 @@ export function createTokenEditor({ printList, onShow, onPreview }) {
     tokenList: element("#token-list", HTMLUListElement),
     form: element("#token-form", HTMLFormElement),
     name: element("#token-name", HTMLInputElement),
+    manaCost: element("#token-cost", HTMLInputElement),
     typeLine: element("#token-type", HTMLInputElement),
     power: element("#token-power", HTMLInputElement),
     toughness: element("#token-toughness", HTMLInputElement),
@@ -75,6 +77,7 @@ export function createTokenEditor({ printList, onShow, onPreview }) {
     token = {
       ...token,
       name: ui.name.value,
+      manaCost: ui.manaCost.value.trim(),
       typeLine: ui.typeLine.value,
       power: ui.power.value.trim(),
       toughness: ui.toughness.value.trim(),
@@ -185,7 +188,7 @@ export function createTokenEditor({ printList, onShow, onPreview }) {
       await tokenStore.save(current);
     } catch {
       canSave = false;
-      ui.status.textContent = "This browser can't save tokens, so they last until the page is closed.";
+      ui.status.textContent = "This browser can't save your cards, so they last until the page is closed.";
       return;
     }
     saved = byName([...saved.filter((other) => other.id !== current.id), current]);
@@ -228,6 +231,7 @@ export function createTokenEditor({ printList, onShow, onPreview }) {
     if (saveTimer !== undefined) save();
     token = next;
     ui.name.value = next.name;
+    ui.manaCost.value = next.manaCost ?? "";
     ui.typeLine.value = next.typeLine;
     ui.power.value = next.power;
     ui.toughness.value = next.toughness;
@@ -304,6 +308,7 @@ export function createTokenEditor({ printList, onShow, onPreview }) {
       open({
         id: crypto.randomUUID(),
         name: text.name,
+        manaCost: text.manaCost,
         typeLine: text.typeLine,
         power: text.power,
         toughness: text.toughness,

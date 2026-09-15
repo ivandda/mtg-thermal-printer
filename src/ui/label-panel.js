@@ -5,7 +5,15 @@
 /** @import { ScryfallCard, ScryfallClient } from "../scryfall/client.js" */
 /** @import { Rect } from "./art-arranger.js" */
 /** @import { LabelSize } from "./label-size.js" */
-import { artBoxOf, DARKNESS, isBlankToken, loadArt, pageCount, renderDesign } from "../designs.js";
+import {
+  artBoxOf,
+  customKind,
+  DARKNESS,
+  isBlankToken,
+  loadArt,
+  pageCount,
+  renderDesign,
+} from "../designs.js";
 import { cardSize } from "../imaging/card.js";
 import { markerTotal } from "../markers.js";
 import { clampCopies } from "../print-list.js";
@@ -266,8 +274,8 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
           ? "Pick markers to print"
           : `${total} ${total === 1 ? "marker" : "markers"} on ${labels} ${labels === 1 ? "label" : "labels"}`;
     } else if (state.source === "token") {
-      name = state.token?.name.trim() || "New token";
-      ui.cardSet.textContent = "Custom token";
+      name = state.token?.name.trim() || "New card";
+      ui.cardSet.textContent = state.token ? customKind(state.token) : "";
     } else if (state.card) {
       name = cardFaces(state.card)[state.face]?.name ?? state.card.name;
       ui.cardSet.textContent = `${state.card.set_name}, #${state.card.collector_number}`;
