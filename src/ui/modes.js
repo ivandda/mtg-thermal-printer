@@ -12,8 +12,8 @@ const BACK_LABELS = {
 };
 
 /**
- * The tabs that switch between finding a card, creating one, picking markers and finding a deck's
- * tokens. The choice is kept in the address.
+ * The tabs that switch between finding a card, creating one, picking markers and printing a deck.
+ * The choice is kept in the address.
  * @param {(mode: Mode) => void} onChange
  */
 export function createModes(onChange) {

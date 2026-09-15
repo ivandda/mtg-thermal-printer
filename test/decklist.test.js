@@ -1,7 +1,7 @@
 /** @import { CardIdentifier, ScryfallCard } from "../src/scryfall/client.js" */
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { findDeckTokens, parseDecklist } from "../src/decklist.js";
+import { deckLinkSite, findDeckCards, findDeckTokens, isBasicLand, parseDecklist } from "../src/decklist.js";
 
 test("lists exported by Arena, MTGO and deck sites are read the same way", () => {
   const arena = `About
@@ -27,26 +27,57 @@ Fire // Ice`;
   assert.deepEqual(parseDecklist("\n  \nCommander (1)\n"), []);
 });
 
+test("Archidekt's categories and labels are read, and cards kept out of the deck are skipped", () => {
+  const archidekt = `1x Sol Ring (c21) 263 [Ramp] ^Have,#37d67a^
+1x Krenko, Mob Boss (m13) 139 *F* [Commander{top}]
+1x Lightning Bolt [Removal,Instant]
+2x Goblin Guide (zen) 126 [Maybeboard{noDeck}{noPrice}]
+1x Llanowar Elves [M19]
+
+Maybeboard
+1 Skullclamp
+
+Tokens
+1 Goblin`;
+  assert.deepEqual(parseDecklist(archidekt), [
+    { count: 1, name: "Sol Ring", set: "c21", number: "263" },
+    { count: 1, name: "Krenko, Mob Boss", set: "m13", number: "139" },
+    { count: 1, name: "Lightning Bolt" },
+    { count: 1, name: "Llanowar Elves", set: "m19" },
+  ]);
+});
+
+test("basic lands and pasted deck links are recognized", () => {
+  assert.equal(isBasicLand(card("forest", "Forest", { type_line: "Basic Land — Forest" })), true);
+  assert.equal(
+    isBasicLand(card("island", "Snow-Covered Island", { type_line: "Basic Snow Land — Island" })),
+    true,
+  );
+  assert.equal(
+    isBasicLand(card("arbor", "Dryad Arbor", { type_line: "Land Creature — Forest Dryad" })),
+    false,
+  );
+  assert.equal(deckLinkSite(" https://archidekt.com/decks/123/goblins\n"), "archidekt.com");
+  assert.equal(deckLinkSite("https://www.moxfield.com/decks/abc"), "moxfield.com");
+  assert.equal(deckLinkSite("4 Lightning Bolt"), undefined);
+});
+
 /**
  * @param {string} id
  * @param {string} name
  * @param {Partial<ScryfallCard>} [extra]
  * @returns {ScryfallCard}
  */
-const card = (id, name, extra = {}) => ({
-  id,
-  oracle_id: `o-${id}`,
-  name,
-  set_name: "Set",
-  collector_number: "1",
-  ...extra,
-});
+function card(id, name, extra = {}) {
+  return { id, oracle_id: `o-${id}`, name, set_name: "Set", collector_number: "1", ...extra };
+}
 
 /**
  * A Scryfall stand-in that knows some cards by name, set and number, or ID.
  * @param {ScryfallCard[]} known
+ * @param {{ reversed?: boolean }} [options]  Returns found cards in the opposite order.
  */
-function fakeScryfall(known) {
+function fakeScryfall(known, { reversed = false } = {}) {
   /** @type {CardIdentifier[][]} */
   const requests = [];
   return {
@@ -70,10 +101,52 @@ function fakeScryfall(known) {
         if (found) cards.push(found);
         else notFound.push(identifier);
       }
-      return { cards, notFound };
+      return { cards: reversed ? cards.reverse() : cards, notFound };
     },
   };
 }
+
+test("a deck's cards are found with their counts, and names not found are listed", async () => {
+  const scryfall = fakeScryfall([
+    card("krenko", "Krenko, Mob Boss"),
+    card("delver", "Delver of Secrets // Insectile Aberration"),
+    card("bolt", "Lightning Bolt", { collector_number: "146" }),
+  ]);
+  const { cards, missing } = await findDeckCards(scryfall, [
+    { count: 4, name: "Krenko, Mob Boss", set: "zzz", number: "999" },
+    { count: 2, name: "Lightning Bolt" },
+    { count: 1, name: "Delver of Secrets" },
+    { count: 2, name: "Lightning Bolt", set: "m10", number: "146" },
+    { count: 1, name: "Not A Card" },
+  ]);
+  assert.deepEqual(
+    cards.map(({ card: found, count }) => [found.name, count]),
+    [
+      ["Lightning Bolt", 4],
+      ["Delver of Secrets // Insectile Aberration", 1],
+      ["Krenko, Mob Boss", 4],
+    ],
+  );
+  assert.deepEqual(missing, ["Not A Card"]);
+  assert.deepEqual(scryfall.requests[1], [{ name: "Krenko, Mob Boss" }, { name: "Not A Card" }]);
+});
+
+test("counts stay with their cards whatever order Scryfall answers in", async () => {
+  const scryfall = fakeScryfall([card("bolt", "Lightning Bolt"), card("forest", "Forest")], {
+    reversed: true,
+  });
+  const { cards } = await findDeckCards(scryfall, [
+    { count: 4, name: "Lightning Bolt" },
+    { count: 30, name: "Forest" },
+  ]);
+  assert.deepEqual(
+    cards.map(({ card: found, count }) => [found.name, count]),
+    [
+      ["Lightning Bolt", 4],
+      ["Forest", 30],
+    ],
+  );
+});
 
 test("a deck's tokens are listed once, with the cards that make them", async () => {
   const goblin = { id: "goblin", component: "token", name: "Goblin", type_line: "Token Creature — Goblin" };
@@ -85,35 +158,26 @@ test("a deck's tokens are listed once, with the cards that make them", async () 
     type_line: "Token Artifact — Treasure",
   };
   const scryfall = fakeScryfall([
-    card("krenko", "Krenko, Mob Boss", { all_parts: [goblin] }),
-    card("warchief", "Goblin Warchief Maker", { all_parts: [otherGoblin, treasure] }),
-    card("bolt", "Lightning Bolt"),
     card("goblin", "Goblin", { oracle_id: "o-goblin" }),
     card("goblin-2", "Goblin", { oracle_id: "o-goblin" }),
     card("treasure", "Treasure"),
   ]);
-  const { tokens, missing } = await findDeckTokens(scryfall, [
-    { count: 4, name: "Krenko, Mob Boss", set: "zzz", number: "999" },
-    { count: 2, name: "Goblin Warchief Maker" },
-    { count: 4, name: "Lightning Bolt" },
-    { count: 1, name: "Not A Card" },
+  const tokens = await findDeckTokens(scryfall, [
+    card("krenko", "Krenko, Mob Boss", { all_parts: [goblin] }),
+    card("warchief", "Goblin Warchief Maker", { all_parts: [otherGoblin, treasure] }),
+    card("bolt", "Lightning Bolt"),
   ]);
   assert.deepEqual(
     tokens.map(({ card: token, makers }) => [token.name, makers]),
     [
-      ["Goblin", ["Goblin Warchief Maker", "Krenko, Mob Boss"]],
+      ["Goblin", ["Krenko, Mob Boss", "Goblin Warchief Maker"]],
       ["Treasure", ["Goblin Warchief Maker"]],
     ],
   );
-  assert.deepEqual(missing, ["Not A Card"]);
-  assert.deepEqual(scryfall.requests[1], [{ name: "Krenko, Mob Boss" }, { name: "Not A Card" }]);
 });
 
-test("a deck that makes nothing needs no more requests", async () => {
-  const scryfall = fakeScryfall([card("bolt", "Lightning Bolt")]);
-  assert.deepEqual(await findDeckTokens(scryfall, [{ count: 4, name: "Lightning Bolt" }]), {
-    tokens: [],
-    missing: [],
-  });
-  assert.equal(scryfall.requests.length, 1);
+test("a deck that makes nothing needs no request for tokens", async () => {
+  const scryfall = fakeScryfall([]);
+  assert.deepEqual(await findDeckTokens(scryfall, [card("bolt", "Lightning Bolt")]), []);
+  assert.equal(scryfall.requests.length, 0);
 });

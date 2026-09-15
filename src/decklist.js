@@ -2,8 +2,8 @@
 import { madeBy } from "./scryfall/client.js";
 
 /**
- * Decklists as text, the way Arena, MTGO, Moxfield and most deck sites export them, and the tokens a
- * deck needs.
+ * Decklists as text, the way Arena, MTGO, Moxfield, Archidekt and most deck sites export them, the
+ * cards they list and the tokens a deck needs.
  */
 
 /**
@@ -15,6 +15,12 @@ import { madeBy } from "./scryfall/client.js";
  */
 
 /**
+ * @typedef {object} DeckCard
+ * @property {ScryfallCard} card
+ * @property {number} count
+ */
+
+/**
  * @typedef {object} DeckToken
  * @property {ScryfallCard} card  The token, emblem or game card.
  * @property {string[]} makers  Names of the deck's cards that make it.
@@ -22,33 +28,53 @@ import { madeBy } from "./scryfall/client.js";
 
 const SECTION =
   /^(about|deck|main|mainboard|main deck|sideboard|side|commander|commanders|companion|maybeboard|considering|tokens)\b[\s:]*(\(\d+\))?$/i;
+/** Sections whose lines aren't cards in the deck: Arena's "About" holds the deck's name. */
+const LEFT_OUT = new Set(["about", "maybeboard", "considering", "tokens"]);
 // "4x Lightning Bolt (M10) 146 *F*": count, name, then optionally set, collector number and markers.
 const LINE =
   /^(?:(\d+)x?\s+)?(.+?)(?:\s+[([]([A-Za-z0-9]{2,6})[)\]](?:\s+([A-Za-z0-9★-]+))?)?(?:\s+\*[A-Za-z]+\*)*$/;
+// Archidekt adds a card's labels between carets and its categories in brackets:
+// "1x Sol Ring (c21) 263 [Ramp,Maybeboard{noDeck}] ^Have,#37d67a^".
+const LABELS = /\s+\^[^^]*\^/g;
+const CATEGORIES = /\s+\[([^\]]*)\]$/;
+const SET_CODE = /^[A-Za-z0-9]{2,6}$/;
+const AFTER_PRINTING = /(\)|\)\s+[A-Za-z0-9★-]+|\*[A-Za-z]+\*)$/;
 
 /**
- * The cards in a decklist, once each with how many there are. Section headers, comments and the
- * deck's name are skipped.
+ * The cards in a decklist, once each with how many there are. Section headers, comments, the deck's
+ * name and cards kept out of the deck, like a maybeboard, are skipped.
  * @param {string} text
  * @returns {DeckEntry[]}
  */
 export function parseDecklist(text) {
   /** @type {Map<string, DeckEntry>} */
   const entries = new Map();
-  let inAbout = false;
+  let leftOut = false;
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim().replace(/^SB:\s*/i, "");
+    let line = raw
+      .trim()
+      .replace(/^SB:\s*/i, "")
+      .replace(LABELS, "");
     if (!line) {
-      inAbout = false;
+      leftOut = false;
       continue;
     }
     if (line.startsWith("//") || line.startsWith("#")) continue;
     const section = SECTION.exec(line);
     if (section) {
-      inAbout = section[1].toLowerCase() === "about";
+      leftOut = LEFT_OUT.has(section[1].toLowerCase());
       continue;
     }
-    if (inAbout) continue; // Arena's "About" section holds the deck's name.
+    if (leftOut) continue;
+    const categories = CATEGORIES.exec(line);
+    // A lone "[M10]" can be a set code, but not after a set in parentheses or with more than a code.
+    if (
+      categories &&
+      (!SET_CODE.test(categories[1]) || AFTER_PRINTING.test(line.slice(0, categories.index)))
+    ) {
+      if (/\{noDeck\}/i.test(categories[1])) continue;
+      line = line.slice(0, categories.index);
+    }
     const match = LINE.exec(line);
     if (!match) continue;
     const [, count, name, set, number] = match;
@@ -67,18 +93,48 @@ export function parseDecklist(text) {
 }
 
 /**
- * Looks up a deck's cards and the tokens, emblems and game cards they make, once each.
+ * The site a pasted deck link points to, since deck sites don't let other sites read their decks.
+ * @param {string} text
+ * @returns {string | undefined}  Its host name without "www.", or nothing when the text isn't a link.
+ */
+export function deckLinkSite(text) {
+  const trimmed = text.trim();
+  if (!/^https?:\/\/\S+$/i.test(trimmed)) return undefined;
+  try {
+    return new URL(trimmed).hostname.replace(/^www\./, "");
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Looks up a deck's cards. The same printing listed twice is counted once.
  * @param {Pick<ScryfallClient, "collection">} scryfall
  * @param {DeckEntry[]} entries
- * @returns {Promise<{ tokens: DeckToken[], missing: string[] }>}
+ * @returns {Promise<{ cards: DeckCard[], missing: string[] }>}
  */
-export async function findDeckTokens(scryfall, entries) {
+export async function findDeckCards(scryfall, entries) {
   const first = await lookUp(scryfall, entries, identifierOf);
   // A printing the list names may not exist, and some sites write only a card's front face, so what
   // wasn't found is looked up again by its name alone.
-  const retry = await lookUp(scryfall, first.missing, (entry) => ({ name: entry.name.split(" // ")[0] }));
-  const cards = [...first.cards, ...retry.cards];
+  const retry = await lookUp(scryfall, first.missing, (entry) => ({ name: frontName(entry.name) }));
+  /** @type {Map<string, DeckCard>} */
+  const byId = new Map();
+  for (const { card, count } of [...first.found, ...retry.found]) {
+    const same = byId.get(card.id);
+    if (same) same.count += count;
+    else byId.set(card.id, { card, count });
+  }
+  return { cards: [...byId.values()], missing: retry.missing.map(({ name }) => name) };
+}
 
+/**
+ * The tokens, emblems and game cards a deck's cards make, once each.
+ * @param {Pick<ScryfallClient, "collection">} scryfall
+ * @param {ScryfallCard[]} cards
+ * @returns {Promise<DeckToken[]>}
+ */
+export async function findDeckTokens(scryfall, cards) {
   /** Deck cards that make each related card, by its Scryfall ID. @type {Map<string, Set<string>>} */
   const makersById = new Map();
   for (const card of cards) {
@@ -88,7 +144,7 @@ export async function findDeckTokens(scryfall, entries) {
       makersById.set(part.id, makers);
     }
   }
-  if (makersById.size === 0) return { tokens: [], missing: retry.missing.map(({ name }) => name) };
+  if (makersById.size === 0) return [];
 
   const related = await scryfall.collection([...makersById.keys()].map((id) => ({ id })));
   // Different cards can make the same token from different sets; it's listed once.
@@ -100,11 +156,14 @@ export async function findDeckTokens(scryfall, entries) {
     for (const maker of makersById.get(card.id) ?? []) token.makers.add(maker);
     byOracle.set(key, token);
   }
-  return {
-    tokens: [...byOracle.values()].map(({ card, makers }) => ({ card, makers: [...makers] })),
-    missing: retry.missing.map(({ name }) => name),
-  };
+  return [...byOracle.values()].map(({ card, makers }) => ({ card, makers: [...makers] }));
 }
+
+/**
+ * Basic lands, including snow-covered ones and Wastes.
+ * @param {ScryfallCard} card
+ */
+export const isBasicLand = (card) => /^Basic\b/.test(card.type_line ?? "");
 
 /**
  * @param {Pick<ScryfallClient, "collection">} scryfall
@@ -112,15 +171,49 @@ export async function findDeckTokens(scryfall, entries) {
  * @param {(entry: DeckEntry) => CardIdentifier} identify
  */
 async function lookUp(scryfall, entries, identify) {
-  if (entries.length === 0) return { cards: [], missing: [] };
+  if (entries.length === 0) return { found: [], missing: [] };
   const identifiers = entries.map(identify);
   const { cards, notFound } = await scryfall.collection(identifiers);
   const notFoundKeys = new Set(notFound.map((identifier) => JSON.stringify(identifier)));
-  return {
-    cards,
-    missing: entries.filter((_, index) => notFoundKeys.has(JSON.stringify(identifiers[index]))),
-  };
+  const pool = [...cards];
+  /** @type {DeckCard[]} */
+  const found = [];
+  /** @type {DeckEntry[]} */
+  const missing = [];
+  entries.forEach((entry, index) => {
+    const identifier = identifiers[index];
+    if (notFoundKeys.has(JSON.stringify(identifier))) {
+      missing.push(entry);
+      return;
+    }
+    // Cards come back in the order they were asked for; matching them keeps counts right even if not.
+    const at = pool.findIndex((card) => matches(card, identifier));
+    const [card] = pool.splice(at === -1 ? 0 : at, 1);
+    if (card) found.push({ card, count: entry.count });
+    else missing.push(entry);
+  });
+  return { found, missing };
 }
+
+/**
+ * @param {ScryfallCard} card
+ * @param {CardIdentifier} identifier
+ */
+function matches(card, identifier) {
+  if ("id" in identifier) return card.id === identifier.id;
+  if ("collector_number" in identifier) return card.collector_number === identifier.collector_number;
+  return [card.name, frontName(card.name)].some((name) => plain(name) === plain(identifier.name));
+}
+
+/** @param {string} name */
+const frontName = (name) => name.split(" // ")[0];
+
+/** @param {string} name */
+const plain = (name) =>
+  name
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
 
 /**
  * @param {DeckEntry} entry
