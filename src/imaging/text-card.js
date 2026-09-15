@@ -5,15 +5,15 @@ import { placeImage } from "./arrangement.js";
 import { ditherToBitmap, pasteBitmap, thresholdToBitmap } from "./bitmap.js";
 import { canvasContext, fitLine, font, TEXT_THRESHOLD } from "./canvas-text.js";
 import { cardSize } from "./card.js";
-import { fitRules, parseRules } from "./rules-text.js";
+import { fitRules, parseRules, textHeight, wrapParagraph } from "./rules-text.js";
 
 const CARD_WIDTH_MM = 63;
 const LINE_HEIGHT = 1.25;
 /** Symbols are drawn about as tall as capital letters and spaced like a wide letter. */
 const SYMBOL_SIZE = 0.8;
 const SYMBOL_ADVANCE = 1;
-/** Height ÷ width of the art box when there is rules text below it. */
-const ART_ASPECT = 0.62;
+/** Height ÷ width of the art box at its smallest, when long rules text needs the room. */
+const MIN_ART_ASPECT = 0.5;
 /** Sizes in millimetres of a real card. */
 const PADDING = 3;
 const NAME_ROW = 8;
@@ -34,12 +34,40 @@ const GAP = 2;
 /** @typedef {{ x: number, y: number, width: number, height: number }} Rect */
 
 /**
+ * Widths of rules text at a size, in dots.
+ * @typedef {{ word: (word: Word, size: number) => number, space: (size: number) => number }} TextMeasure
+ */
+
+/**
+ * Measures rules text the way a text card draws it, with each symbol as wide as a wide letter.
+ * @param {OffscreenCanvasRenderingContext2D} context
+ * @returns {TextMeasure}
+ */
+export function textMeasure(context) {
+  /**
+   * @param {Word} word
+   * @param {number} size
+   */
+  const word = (word, size) => {
+    context.font = font(400, size);
+    return word.reduce(
+      (total, piece) =>
+        total + (piece.symbol ? size * SYMBOL_ADVANCE : context.measureText(piece.text).width),
+      0,
+    );
+  };
+  return { word, space: (size) => word([{ text: " ", symbol: false }], size) };
+}
+
+/**
  * Where the parts of a text card go on the label, in dots. The card is as large as a card image
- * would print. Without rules text, the art takes the space the text would have used.
+ * would print. The rules text gets the room it needs at its largest size and the art takes the
+ * rest; long text shrinks the art down to a minimum, and then the text.
  * @param {{ rules: string, stats: string, hasArt: boolean }} card
  * @param {Media} media
+ * @param {TextMeasure} measure
  */
-export function layoutTextCard({ rules, stats, hasArt }, media) {
+export function layoutTextCard({ rules, stats, hasArt }, media, measure) {
   const box = cardSize(media);
   const width = media.printableWidth;
   const height = media.printableHeight || box.height;
@@ -58,6 +86,7 @@ export function layoutTextCard({ rules, stats, hasArt }, media) {
   };
   const nameBottom = inner.top + NAME_ROW * mm;
   const rulesBottom = stats ? inner.bottom - (STATS_HEIGHT + 1) * mm : inner.bottom;
+  const rulesSize = { largest: (hasArt ? 4.5 : 6) * mm, smallest: 2.4 * mm };
 
   /** @type {Rect | undefined} */
   let art;
@@ -65,10 +94,15 @@ export function layoutTextCard({ rules, stats, hasArt }, media) {
   if (hasArt) {
     const top = Math.round(nameBottom + GAP * mm);
     const artWidth = Math.round(inner.right - inner.left);
-    const tallest = Math.round(rulesBottom - (1 + TYPE_ROW + GAP) * mm - top);
+    const room = rulesBottom - (1 + TYPE_ROW + GAP) * mm - top;
+    const size = rulesSize.largest;
+    const wrapped = parseRules(rules).map((paragraph) =>
+      wrapParagraph(paragraph, artWidth, (word) => measure.word(word, size), measure.space(size)),
+    );
+    const text = textHeight(wrapped, size, LINE_HEIGHT);
     const artHeight = Math.max(
       1,
-      rules.trim() ? Math.min(Math.round(artWidth * ART_ASPECT), tallest) : tallest,
+      Math.floor(Math.min(room, Math.max(artWidth * MIN_ART_ASPECT, room - text))),
     );
     art = { x: Math.round(inner.left), y: top, width: artWidth, height: artHeight };
     typeTop = top + artHeight + 1 * mm;
@@ -86,6 +120,7 @@ export function layoutTextCard({ rules, stats, hasArt }, media) {
     typeBottom,
     rulesTop: typeBottom + GAP * mm,
     rulesBottom,
+    rulesSize,
   };
 }
 
@@ -100,28 +135,20 @@ export function layoutTextCard({ rules, stats, hasArt }, media) {
  * @returns {Bitmap}
  */
 export function renderTextCard(card, media, { tone, symbols }) {
-  const layout = layoutTextCard({ rules: card.rules, stats: card.stats, hasArt: Boolean(card.art) }, media);
+  const context = canvasContext(media.printableWidth, media.printableHeight || cardSize(media).height);
+  const measure = textMeasure(context);
+  const layout = layoutTextCard(
+    { rules: card.rules, stats: card.stats, hasArt: Boolean(card.art) },
+    media,
+    measure,
+  );
   const { width, height, mm, frame, inner } = layout;
   const innerWidth = inner.right - inner.left;
 
-  const context = canvasContext(width, height);
   context.fillStyle = "white";
   context.fillRect(0, 0, width, height);
   context.fillStyle = "black";
   context.strokeStyle = "black";
-
-  /**
-   * @param {Word} word
-   * @param {number} size
-   */
-  const measure = (word, size) => {
-    context.font = font(400, size);
-    return word.reduce(
-      (total, piece) =>
-        total + (piece.symbol ? size * SYMBOL_ADVANCE : context.measureText(piece.text).width),
-      0,
-    );
-  };
 
   /**
    * Draws a word's text and symbols from `x` on a baseline, and returns where it ends.
@@ -176,7 +203,7 @@ export function renderTextCard(card, media, { tone, symbols }) {
   const nameBaseline = inner.top + NAME_ROW * mm * 0.68;
   const cost = parseRules(card.manaCost).flat();
   const costSize = 4.5 * mm;
-  const costWidth = cost.reduce((total, word) => total + measure(word, costSize), 0);
+  const costWidth = cost.reduce((total, word) => total + measure.word(word, costSize), 0);
   const nameWidth = innerWidth - (costWidth ? costWidth + 2 * mm : 0);
   const nameSize = fitLine(context, card.name, 700, 5.5 * mm, nameWidth);
   context.font = font(700, nameSize);
@@ -224,18 +251,16 @@ export function renderTextCard(card, media, { tone, symbols }) {
   }
 
   // Rules text
-  const space = (/** @type {number} */ size) => measure([{ text: " ", symbol: false }], size);
   const fitted = fitRules(
     parseRules(card.rules),
     {
       width: innerWidth,
       height: layout.rulesBottom - layout.rulesTop,
-      largest: (card.art ? 4.5 : 6) * mm,
-      smallest: 2.4 * mm,
+      ...layout.rulesSize,
       lineHeight: LINE_HEIGHT,
     },
-    measure,
-    space,
+    measure.word,
+    measure.space,
   );
   const lineStep = fitted.size * LINE_HEIGHT;
   let y = layout.rulesTop;
@@ -244,7 +269,7 @@ export function renderTextCard(card, media, { tone, symbols }) {
       y += lineStep;
       let x = inner.left;
       for (const word of line)
-        x = drawWord(word, x, y - fitted.size * 0.3, fitted.size, 400) + space(fitted.size);
+        x = drawWord(word, x, y - fitted.size * 0.3, fitted.size, 400) + measure.space(fitted.size);
     }
     y += lineStep / 2;
   }
