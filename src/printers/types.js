@@ -21,6 +21,7 @@
  * @property {number} lengthMm
  * @property {number} printableWidth   Printable area in dots.
  * @property {number} printableHeight  Printable area in dots.
+ * @property {"rectangle" | "round"} shape
  */
 
 /**
@@ -42,6 +43,7 @@
  * @property {string} name
  * @property {USBDeviceFilter[]} usbFilters  USB devices this driver can talk to.
  * @property {Media[]} media
+ * @property {string} [setupTip]  Help for when the printer is missing from the browser's list.
  * @property {(transport: Transport) => Promise<PrinterStatus>} readStatus
  * @property {(transport: Transport, pages: Bitmap[], media: Media) => Promise<void>} print
  *   Resolves once the printer reports the job printed. Each page must match the media's

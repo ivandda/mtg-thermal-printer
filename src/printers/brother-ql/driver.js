@@ -1,4 +1,4 @@
-/** @import { PrinterDriver, Transport } from "../types.js" */
+/** @import { Bitmap, PrinterDriver, Transport } from "../types.js" */
 /** @import { RasterModel } from "./raster.js" */
 import { findMedia, MEDIA } from "./media.js";
 import { encodeJob } from "./raster.js";
@@ -14,6 +14,7 @@ export const brotherQl700 = {
   name: "Brother QL-700",
   usbFilters: [{ vendorId: 0x04f9, productId: 0x2042 }],
   media: MEDIA,
+  setupTip: "On a Brother QL-700, turn Editor Lite off (its green light).",
 
   async readStatus(transport) {
     await transport.write(statusRequest(QL_700));
@@ -25,7 +26,8 @@ export const brotherQl700 = {
     const label = MEDIA.find(({ id }) => id === media.id);
     if (!label) throw new Error(`The QL-700 can't print on ${media.name}`);
 
-    await transport.write(encodeJob(pages, label, QL_700));
+    const fitted = label.lengthMm ? pages : pages.map((page) => lengthen(page, QL_700.minRows));
+    await transport.write(encodeJob(fitted, label, QL_700));
 
     let printed = false;
     let ready = false;
@@ -37,6 +39,20 @@ export const brotherQl700 = {
     }
   },
 };
+
+/**
+ * Pads a page with blank rows above and below, keeping it centered, so a small image still makes a
+ * label as long as a continuous roll allows.
+ * @param {Bitmap} page
+ * @param {number} rows
+ * @returns {Bitmap}
+ */
+function lengthen(page, rows) {
+  if (page.height >= rows) return page;
+  const pixels = new Uint8Array(page.width * rows);
+  pixels.set(page.pixels, Math.floor((rows - page.height) / 2) * page.width);
+  return { width: page.width, height: rows, pixels };
+}
 
 /** @param {Transport} transport */
 async function nextStatus(transport) {

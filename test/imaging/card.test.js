@@ -22,3 +22,9 @@ test("a card fits the label height on short labels", () => {
 test("a card without its border keeps the cropped image's proportions", () => {
   assert.deepEqual(cardSize(media("62x100"), 1.3), { width: 696, height: 905 });
 });
+
+test("a card on a round label keeps its corners inside the circle", () => {
+  const { width, height } = cardSize(media("d58"));
+  assert.deepEqual({ width, height }, { width: 359, height: 501 });
+  assert.ok(Math.hypot(width, height) <= media("d58").printableWidth);
+});

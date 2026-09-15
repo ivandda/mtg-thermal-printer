@@ -14,6 +14,7 @@
  * @property {string} name
  * @property {string} set_name
  * @property {string} collector_number
+ * @property {string} [border_color]  e.g. "black" or "borderless"
  * @property {ImageUris} [image_uris]
  * @property {{ name: string, image_uris?: ImageUris }[]} [card_faces]
  */

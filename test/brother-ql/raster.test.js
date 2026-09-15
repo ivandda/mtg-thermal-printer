@@ -63,3 +63,7 @@ test("rejects pages that don't fit the label", () => {
   assert.throws(() => encodeJob([pattern(696, 300)], media("62x29"), QL_700), RangeError);
   assert.throws(() => encodeJob([pattern(696, 100)], media("62"), QL_700), RangeError);
 });
+
+test("small die-cut labels may be shorter than the continuous-roll minimum", () => {
+  assert.doesNotThrow(() => encodeJob([pattern(94, 94)], media("d12"), QL_700));
+});

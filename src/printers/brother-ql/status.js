@@ -5,21 +5,21 @@ export const PHASE_WAITING = 0x00;
 
 // Bits of reply bytes 8 and 9, lowest bit first. Unused bits are null.
 const ERRORS = [
-  "No media",
-  "End of media",
-  "Cutter jam",
+  "No label roll",
+  "Out of labels",
+  "Cutter jammed",
   null,
-  "Printer in use",
+  "Printer busy",
   "Printer turned off",
   null,
   "Fan error",
-  "Replace media",
-  "Expansion buffer full",
+  "Wrong label roll for this print",
+  "Print job too large",
   "Communication error",
-  "Communication buffer full",
+  "Printer buffer full",
   "Cover open",
-  "Cancel key",
-  "Media cannot be fed",
+  "Cancelled on the printer",
+  "Labels can't feed",
   "System error",
 ];
 

@@ -40,6 +40,7 @@ function connect({ allowed = [], picked, openFailures = 0, replies = [] }) {
       written.push(data);
     },
     read: async () => {
+      await new Promise((resolve) => setTimeout(resolve)); // replies take a moment, like over USB
       const reply = replies.shift();
       if (!reply) throw new Error("The printer stopped responding");
       return reply;
@@ -92,7 +93,7 @@ test("explains when another tab or app is using the printer, and retrying reopen
     printer: "Brother QL-700",
     message: "In use by another tab or app. Close it, then try again.",
   });
-  await connection.retry();
+  await connection.refresh();
   assert.equal(connection.state.kind, "ready");
   assert.equal(opened.count, 2);
 });
@@ -109,6 +110,15 @@ test("printing finishes when the printer reports the job done", async () => {
   await connection.restore();
   await connection.print([BLANK_PAGE]);
   assert.equal(written.length, 2); // the status request, then the print job
+});
+
+test("checking the printer while it prints waits for the print to finish", async () => {
+  const { connection, written } = connect({ allowed: [QL_700], replies: [IDLE, PRINTED, WAITING, IDLE] });
+  await connection.restore();
+  await Promise.all([connection.print([BLANK_PAGE]), connection.refresh()]);
+  assert.equal(written.length, 3); // status request, print job, then the second status request
+  assert.equal(written[1].length > written[2].length, true);
+  assert.equal(connection.state.kind, "ready");
 });
 
 test("unplugging the printer disconnects it", async () => {

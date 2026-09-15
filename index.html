@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Search Magic: The Gathering cards and tokens and print them on a Brother QL label printer.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://*.scryfall.io; connect-src https://api.scryfall.com https://*.scryfall.io; base-uri 'none'; form-action 'none'">
     <title>MTG Thermal Printer</title>
     <link rel="icon" href="src/favicon.svg" type="image/svg+xml">
     <link rel="preload" href="src/fonts/atkinson-hyperlegible-next.woff2" as="font" type="font/woff2" crossorigin>
@@ -53,7 +54,7 @@
           <div class="dimension width"><span id="label-width">62 mm</span></div>
           <div class="liner">
             <div class="sticker">
-              <canvas id="preview" width="696" height="1109"></canvas>
+              <canvas id="preview" width="696" height="1109" role="img" aria-label="Label preview"></canvas>
               <p class="placeholder">Pick a card to see how it prints.</p>
             </div>
           </div>
@@ -61,12 +62,12 @@
         </figure>
 
         <div id="card-heading" class="card-heading" hidden>
-          <h2 id="card-name">Pick a card</h2>
+          <h2 id="card-name" tabindex="-1">Pick a card</h2>
           <p id="card-set"></p>
         </div>
         <fieldset id="printings" class="printings" aria-label="Printings"></fieldset>
 
-        <form id="controls" class="controls">
+        <form id="controls" class="controls" novalidate>
           <div class="field">
             <label for="media">Label</label>
             <select id="media" name="media"></select>

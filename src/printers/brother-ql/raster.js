@@ -11,8 +11,8 @@ import { MEDIA_TYPE } from "./media.js";
  * @typedef {object} RasterModel
  * @property {number} bytesPerRow  Raster line length; the print head is bytesPerRow × 8 dots wide.
  * @property {number} invalidateBytes  Zero bytes sent first, to flush any half-received job.
- * @property {number} minRows
- * @property {number} maxRows
+ * @property {number} minRows  Shortest label a continuous roll can print, in dots.
+ * @property {number} maxRows  Longest label a continuous roll can print, in dots.
  */
 
 const ESC = 0x1b;
@@ -90,10 +90,13 @@ function assertFits(page, media, model) {
   if (page.width !== media.printableWidth) {
     throw new RangeError(`${media.name} needs pages ${media.printableWidth} dots wide, got ${page.width}`);
   }
-  if (media.printableHeight && page.height !== media.printableHeight) {
-    throw new RangeError(`${media.name} needs pages ${media.printableHeight} dots tall, got ${page.height}`);
-  }
-  if (page.height < model.minRows || page.height > model.maxRows) {
+  if (media.printableHeight) {
+    if (page.height !== media.printableHeight) {
+      throw new RangeError(
+        `${media.name} needs pages ${media.printableHeight} dots tall, got ${page.height}`,
+      );
+    }
+  } else if (page.height < model.minRows || page.height > model.maxRows) {
     throw new RangeError(`Pages must be ${model.minRows}–${model.maxRows} dots tall, got ${page.height}`);
   }
 }

@@ -37,6 +37,7 @@ function label(
     lengthMm,
     printableWidth,
     printableHeight,
+    shape: kind === "round" ? "round" : "rectangle",
     offsetRight,
     feedMargin,
   };

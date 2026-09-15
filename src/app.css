@@ -72,6 +72,11 @@ canvas {
   outline-offset: 2px;
 }
 
+/* Headings the app moves focus to, so screen readers announce them, aren't controls to outline. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -384,6 +389,15 @@ select:disabled {
 .sticker canvas {
   width: 100%;
   height: auto;
+}
+
+.label.round .sticker,
+.label.round canvas {
+  border-radius: 50%;
+}
+
+.label.round .sticker {
+  padding: 5%;
 }
 
 .label[data-state="empty"] canvas {

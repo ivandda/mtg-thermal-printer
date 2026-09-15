@@ -17,11 +17,16 @@ export const TONES = {
 };
 
 /**
- * The largest box with the given proportions that fits the printable area.
+ * The largest box with the given proportions that fits the printable area. On round labels its
+ * corners must stay inside the circle.
  * @param {Media} media
  * @param {number} [aspect]  Height ÷ width; a whole card by default.
  */
 export function cardSize(media, aspect = CARD_ASPECT) {
+  if (media.shape === "round") {
+    const width = Math.floor(media.printableWidth / Math.hypot(1, aspect));
+    return { width, height: Math.floor(width * aspect) };
+  }
   const height = Math.round(media.printableWidth * aspect);
   if (media.printableHeight && height > media.printableHeight) {
     return { width: Math.round(media.printableHeight / aspect), height: media.printableHeight };

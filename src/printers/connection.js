@@ -22,6 +22,8 @@ export class PrinterConnection extends EventTarget {
   #session;
   /** An attempt to open a printer, shared by requests that overlap it. @type {Promise<void> | undefined} */
   #connecting;
+  /** The last exchange with the printer; the next one waits for it. */
+  #exchange = Promise.resolve();
   #usb;
   #openTransport;
 
@@ -66,9 +68,9 @@ export class PrinterConnection extends EventTarget {
     }
   }
 
-  /** Tries again after a problem: reads the status again, or reopens a printer that failed to open. */
-  async retry() {
-    if (this.#session) await this.#readStatus();
+  /** Checks the printer again: reads its status, or reopens a printer that failed to open. */
+  async refresh() {
+    if (this.#session) await this.#exclusive(() => this.#readStatus());
     else if (this.#device) await this.#connect(this.#device);
     else await this.choose();
   }
@@ -77,17 +79,31 @@ export class PrinterConnection extends EventTarget {
   async print(pages) {
     if (!this.#session || this.state.kind !== "ready") throw new Error("Connect a printer first");
     const { driver, transport } = this.#session;
-    try {
-      await driver.print(transport, pages, this.state.media);
-    } catch (error) {
-      await this.#readStatus();
-      throw error;
-    }
+    const { media } = this.state;
+    await this.#exclusive(async () => {
+      try {
+        await driver.print(transport, pages, media);
+      } catch (error) {
+        await this.#readStatus();
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Runs one exchange with the printer after the previous one finishes. The printer answers every
+   * request on the same channel, so a status check in the middle of a print would take its replies.
+   * @param {() => Promise<void>} task
+   */
+  #exclusive(task) {
+    const run = this.#exchange.then(task);
+    this.#exchange = run.catch(() => {});
+    return run;
   }
 
   /** @param {USBDevice} device */
   #connect(device) {
-    this.#connecting ??= this.#open(device).finally(() => {
+    this.#connecting ??= this.#exclusive(() => this.#open(device)).finally(() => {
       this.#connecting = undefined;
     });
     return this.#connecting;

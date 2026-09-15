@@ -12,6 +12,10 @@ const IMAGE_CACHE_SIZE = 12;
 const SETTINGS_KEY = "settings";
 const LABELS = drivers[0].media;
 const DEFAULT_MEDIA = /** @type {Media} */ (LABELS.find(({ id }) => id === "62x100"));
+const PRINTER_TIP = [
+  "Printer not listed? Check that it's on and plugged in by USB.",
+  ...drivers.flatMap((driver) => driver.setupTip ?? []),
+].join(" ");
 
 /**
  * @template {Element} T
@@ -113,6 +117,7 @@ async function search(page = 1) {
   }
 
   if (page === 1) ui.resultsStatus.textContent = "Searching…";
+  showMoreLoading(page > 1);
   try {
     const list = await scryfall.search(`${tokensOnly() ? "t:token " : ""}game:paper (${text})`, { page });
     if (id !== searchId) return;
@@ -131,7 +136,15 @@ async function search(page = 1) {
       error instanceof ScryfallError
         ? error.message
         : "Couldn't reach Scryfall. Check your connection and try again.";
+  } finally {
+    if (id === searchId) showMoreLoading(false);
   }
+}
+
+/** @param {boolean} loading */
+function showMoreLoading(loading) {
+  ui.more.disabled = loading;
+  ui.more.textContent = loading ? "Loading…" : "Show more";
 }
 
 /**
@@ -143,7 +156,7 @@ function rememberSearch(text) {
   url.search = "";
   if (text) url.searchParams.set("q", text);
   if (!tokensOnly()) url.searchParams.set("scope", "all");
-  history.replaceState(null, "", url);
+  history.replaceState(history.state, "", url);
 }
 
 function renderResults() {
@@ -197,7 +210,6 @@ const groupOf = (card) => card.oracle_id ?? card.id;
 function select(card) {
   state.card = card;
   state.face = 0;
-  document.body.dataset.view = "label";
   for (const button of ui.results.querySelectorAll("button")) {
     button.setAttribute("aria-pressed", String(button.dataset.group === groupOf(card)));
   }
@@ -205,7 +217,7 @@ function select(card) {
   ui.printStatus.textContent = "";
   showCard();
   loadPrintings(card);
-  if (matchMedia("(max-width: 52rem)").matches) window.scrollTo(0, 0);
+  openLabelView();
 }
 
 /** @param {ScryfallCard} card */
@@ -276,12 +288,47 @@ function showCard() {
 }
 
 function showCardName() {
-  if (state.card) ui.cardName.textContent = facesOf(state.card)[state.face]?.name ?? state.card.name;
+  if (!state.card) return;
+  const name = facesOf(state.card)[state.face]?.name ?? state.card.name;
+  ui.cardName.textContent = name;
+  ui.preview.setAttribute("aria-label", `Label preview of ${name}`);
 }
 
-ui.back.addEventListener("click", () => {
+/* Small screens show the results or the label, one at a time */
+
+const narrowScreen = matchMedia("(max-width: 52rem)");
+let resultsScrollY = 0;
+history.scrollRestoration = "manual";
+
+function openLabelView() {
+  if (document.body.dataset.view === "label") return;
+  resultsScrollY = scrollY; // before the results are hidden and the page gets shorter
+  document.body.dataset.view = "label";
+  if (!narrowScreen.matches) return;
+  history.pushState({ view: "label" }, ""); // so the browser's back button returns to the results
+  window.scrollTo(0, 0);
+  ui.cardName.focus({ preventScroll: true });
+}
+
+function closeLabelView() {
+  if (history.state?.view === "label")
+    history.back(); // continues in the popstate listener
+  else showResultsView();
+}
+
+function showResultsView() {
+  if (document.body.dataset.view !== "label") return;
   document.body.dataset.view = "results";
-});
+  if (!narrowScreen.matches) return;
+  window.scrollTo(0, resultsScrollY);
+  const chosen = ui.results.querySelector('[aria-pressed="true"]');
+  if (chosen instanceof HTMLElement) chosen.focus({ preventScroll: true });
+}
+
+addEventListener("popstate", showResultsView);
+// A reload starts on the results, so an entry left from before it no longer opens the label.
+if (history.state?.view === "label") history.replaceState(null, "");
+ui.back.addEventListener("click", closeLabelView);
 
 /* Label settings and preview */
 
@@ -342,6 +389,7 @@ async function updatePreview() {
   const id = ++renderId;
   const media = currentMedia();
   state.page = undefined;
+  ui.printStatus.textContent = "";
   ui.label.dataset.state = "loading";
   showLabelSize(media);
   updatePrintButton();
@@ -351,7 +399,10 @@ async function updatePreview() {
     if (!url) throw new Error(`Scryfall has no image of ${card.name}.`);
     const image = await loadImage(url);
     if (id !== renderId) return;
-    state.page = renderCard(image, media, { tone: TONES[darkness()], cropBorder: ui.cropBorder.checked });
+    state.page = renderCard(image, media, {
+      tone: TONES[darkness()],
+      cropBorder: ui.cropBorder.checked && card.border_color !== "borderless",
+    });
     drawPreview();
     ui.label.dataset.state = "ready";
   } catch (error) {
@@ -389,6 +440,7 @@ function showLabelSize(media) {
   ui.labelWidth.textContent = `${media.widthMm} mm`;
   ui.labelLength.textContent = media.lengthMm ? `${media.lengthMm} mm` : "continuous";
   ui.label.classList.toggle("continuous", !media.lengthMm);
+  ui.label.classList.toggle("round", media.shape === "round");
   if (!state.page) {
     ui.preview.width = media.printableWidth;
     ui.preview.height = media.printableHeight || cardSize(media).height;
@@ -441,8 +493,9 @@ const fits = (page, media) =>
 async function printLabels() {
   if (!state.page || state.printing) return;
   ui.printStatus.textContent = "";
-  if (printer.state.kind === "disconnected") await printer.choose();
-  else if (printer.state.kind === "error") await printer.retry();
+  // Checking the printer first catches a roll that was swapped since it was last checked.
+  if (printer.state.kind === "disconnected") await choosePrinter();
+  else await printer.refresh();
   if (printer.state.kind !== "ready") return;
 
   if (!state.page || !fits(state.page, printer.state.media)) await updatePreview();
@@ -482,15 +535,25 @@ printer.addEventListener("change", () => {
   showPrinter();
   // The printer can only print on the roll it has loaded, so its roll replaces the menu choice.
   ui.media.disabled = printer.state.kind === "ready";
-  if (printer.state.kind === "ready") ui.media.value = printer.state.media.id;
+  if (printer.state.kind === "ready") {
+    ui.media.value = printer.state.media.id;
+    ui.printStatus.textContent = "";
+    saveSettings();
+  }
   showLabelSize(currentMedia());
   if (state.page && !fits(state.page, currentMedia())) updatePreview();
   else updatePrintButton();
 });
 
 ui.printer.addEventListener("click", () =>
-  printer.state.kind === "disconnected" ? printer.choose() : printer.retry(),
+  printer.state.kind === "disconnected" ? choosePrinter() : printer.refresh(),
 );
+
+/** Opens the browser's printer list, with a tip if the user closes it without picking one. */
+async function choosePrinter() {
+  await printer.choose();
+  if (printer.state.kind === "disconnected") ui.printStatus.textContent = PRINTER_TIP;
+}
 
 function showPrinter() {
   const connection = printer.state;
@@ -521,7 +584,7 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     ui.query.focus();
   } else if (event.key === "Escape" && document.body.dataset.view === "label") {
-    document.body.dataset.view = "results";
+    closeLabelView();
   }
 });
 

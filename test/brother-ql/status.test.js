@@ -23,7 +23,7 @@ test("lists every error flag that is set", () => {
   const reply = IDLE_62X100.slice();
   reply[8] = 0b0000_0001;
   reply[9] = 0b0001_0000;
-  assert.deepEqual(parseStatus(reply).errors, ["No media", "Cover open"]);
+  assert.deepEqual(parseStatus(reply).errors, ["No label roll", "Cover open"]);
 });
 
 test("rejects replies that are not status replies", () => {
