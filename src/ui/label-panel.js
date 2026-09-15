@@ -12,7 +12,7 @@ import { clampCopies } from "../print-list.js";
 import { cardFaces, pickCard } from "../scryfall/client.js";
 import { updateAddress } from "./address.js";
 import { bindArtArranger } from "./art-arranger.js";
-import { cardThumbnail, drawBitmap, element, problemMessage } from "./dom.js";
+import { cardThumbnail, drawBitmap, element, problemMessage, showMessage } from "./dom.js";
 import { preparePrinter } from "./printer-button.js";
 import { readSetting, writeSetting } from "./settings.js";
 import { bindStepper } from "./stepper.js";
@@ -353,7 +353,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     ui.status.textContent = "";
     const advice = await preparePrinter(printer);
     if (printer.state.kind !== "ready") {
-      ui.status.textContent = advice;
+      showMessage(ui.status, advice.text, advice.link);
       return;
     }
 
@@ -469,9 +469,12 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     showCards,
     showMarkers,
     showToken,
-    /** @param {string} message */
-    showStatus(message) {
-      ui.status.textContent = message;
+    /**
+     * @param {string} text
+     * @param {{ href: string, text: string }} [link]
+     */
+    showStatus(text, link) {
+      showMessage(ui.status, text, link);
     },
   };
 }

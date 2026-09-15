@@ -31,7 +31,23 @@ On 62 × 100 mm die-cut labels (Brother DK-11202) a card prints at 59 × 82 mm, 
 | Brother QL-500, QL-550, QL-560, QL-570, QL-600, QL-650TD, QL-710W, QL-720NW, QL-800, QL-810W, QL-820NWB | USB | Untested |
 | Brother QL-1050, QL-1060N, QL-1100, QL-1110NWB, QL-1115NWB, with labels up to 104 mm wide | USB | Untested |
 
-The untested printers use the same Brother QL raster protocol, and the app sends each one exactly what brother_ql sends it. If you have one, please [open an issue](https://github.com/ivandda/mtg-thermal-printer/issues) and say whether it prints. Windows and Linux aren't tested yet.
+The untested printers use the same Brother QL raster protocol, and the app sends each one exactly what brother_ql sends it. If you have one, please [open an issue](https://github.com/ivandda/mtg-thermal-printer/issues) and say whether it prints.
+
+On Windows, the printer needs [a one-time driver change](#windows). Printing on Windows and Linux isn't tested yet.
+
+## Windows
+
+Windows only lets a browser use a USB device that runs Microsoft's generic WinUSB driver ([Chrome's WebUSB guide](https://developer.chrome.com/docs/capabilities/build-for-webusb#windows) explains why). A Brother printer normally uses Windows' printer driver, so it needs a one-time change:
+
+1. Plug in the printer and turn it on. If it has Editor Lite, turn it off.
+2. Download and open [Zadig](https://zadig.akeo.ie).
+3. Choose **Options → List All Devices**, then pick your Brother QL printer.
+4. Choose **WinUSB** as the driver and click **Replace Driver**.
+5. Reload the app and click **Connect printer**.
+
+While WinUSB is installed, Brother's software and printing from other Windows programs won't work with that printer. To undo the change, open Device Manager, right-click the printer, choose **Uninstall device** and tick the option to remove its driver. Then unplug the printer and plug it back in, and Windows sets up its own printer driver again.
+
+These steps follow Chrome's guidance but haven't been tried on Windows yet. If you try them, please [open an issue](https://github.com/ivandda/mtg-thermal-printer/issues) and say how it went.
 
 ## Development
 
