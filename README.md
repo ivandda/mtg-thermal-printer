@@ -23,13 +23,15 @@ On 62 × 100 mm die-cut labels (Brother DK-11202) a card prints at 59 × 82 mm, 
 ## Requirements
 
 - **Chrome or Edge**, on desktop or Android. Other browsers can search and preview but can't print, because they don't support WebUSB.
-- **A supported printer connected over USB.** On the QL-700, turn Editor Lite off first (green light off).
+- **A supported printer connected over USB.** If your printer has Editor Lite, turn it off first (green light off).
 
 | Printer | Connection | Status |
 | --- | --- | --- |
 | Brother QL-700 | USB | Tested on macOS |
+| Brother QL-500, QL-550, QL-560, QL-570, QL-600, QL-650TD, QL-710W, QL-720NW, QL-800, QL-810W, QL-820NWB | USB | Untested |
+| Brother QL-1050, QL-1060N, QL-1100, QL-1110NWB, QL-1115NWB, with labels up to 104 mm wide | USB | Untested |
 
-Windows and Linux aren't tested yet.
+The untested printers use the same Brother QL raster protocol, and the app sends each one exactly what brother_ql sends it. If you have one, please [open an issue](https://github.com/ivandda/mtg-thermal-printer/issues) and say whether it prints. Windows and Linux aren't tested yet.
 
 ## Development
 

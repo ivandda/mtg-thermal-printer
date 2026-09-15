@@ -1,44 +1,53 @@
 /** @import { Bitmap, PrinterDriver, Transport } from "../types.js" */
 /** @import { RasterModel } from "./raster.js" */
-import { findMedia, MEDIA } from "./media.js";
+import { findMedia, mediaFor } from "./media.js";
+import { MODELS } from "./models.js";
 import { encodeJob } from "./raster.js";
 import { PHASE_WAITING, parseStatus, STATUS_TYPE, statusRequest } from "./status.js";
 
-/** @type {RasterModel} */
-export const QL_700 = { bytesPerRow: 90, invalidateBytes: 200, minRows: 150, maxRows: 11811 };
-
+const BROTHER = 0x04f9;
 const REPLY_TIMEOUT_MS = 10_000;
 
-/** @type {PrinterDriver} */
-export const brotherQl700 = {
-  name: "Brother QL-700",
-  usbFilters: [{ vendorId: 0x04f9, productId: 0x2042 }],
-  media: MEDIA,
-  setupTip: "On a Brother QL-700, turn Editor Lite off (its green light).",
+/**
+ * A driver for one Brother QL model.
+ * @param {RasterModel} model
+ * @returns {PrinterDriver}
+ */
+export function brotherQl(model) {
+  const media = mediaFor(model);
+  return {
+    name: `Brother ${model.name}`,
+    usbFilters: [{ vendorId: BROTHER, productId: model.productId }],
+    media,
+    setupTip: "If your Brother QL has Editor Lite, turn it off (its green light).",
 
-  async readStatus(transport) {
-    await transport.write(statusRequest(QL_700));
-    const status = await nextStatus(transport);
-    return { media: findMedia(status), errors: status.errors };
-  },
-
-  async print(transport, pages, media) {
-    const label = MEDIA.find(({ id }) => id === media.id);
-    if (!label) throw new Error(`The QL-700 can't print on ${media.name}`);
-
-    const fitted = label.lengthMm ? pages : pages.map((page) => lengthen(page, QL_700.minRows));
-    await transport.write(encodeJob(fitted, label, QL_700));
-
-    let printed = false;
-    let ready = false;
-    while (!ready) {
+    async readStatus(transport) {
+      await transport.write(statusRequest(model));
       const status = await nextStatus(transport);
-      if (status.errors.length > 0) throw new Error(status.errors.join(", "));
-      printed ||= status.statusType === STATUS_TYPE.printed;
-      ready = printed && status.statusType === STATUS_TYPE.phaseChange && status.phase === PHASE_WAITING;
-    }
-  },
-};
+      return { media: findMedia(status, media), errors: status.errors };
+    },
+
+    async print(transport, pages, requested) {
+      const label = media.find(({ id }) => id === requested.id);
+      if (!label) throw new Error(`The ${model.name} can't print on ${requested.name}`);
+
+      const fitted = label.lengthMm ? pages : pages.map((page) => lengthen(page, model.minRows));
+      await transport.write(encodeJob(fitted, label, model));
+
+      let printed = false;
+      let ready = false;
+      while (!ready) {
+        const status = await nextStatus(transport);
+        if (status.errors.length > 0) throw new Error(status.errors.join(", "));
+        printed ||= status.statusType === STATUS_TYPE.printed;
+        ready = printed && status.statusType === STATUS_TYPE.phaseChange && status.phase === PHASE_WAITING;
+      }
+    },
+  };
+}
+
+/** Every Brother QL model. Only the QL-700 has been tested on a real printer. */
+export const brotherQlDrivers = MODELS.map(brotherQl);
 
 /**
  * Pads a page with blank rows above and below, keeping it centered, so a small image still makes a

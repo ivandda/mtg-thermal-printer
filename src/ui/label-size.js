@@ -4,7 +4,10 @@ import { drivers } from "../printers/index.js";
 import { element } from "./dom.js";
 import { readSetting, writeSetting } from "./settings.js";
 
-const LABELS = drivers[0].media;
+/** Every label size some supported printer takes, once each. */
+const LABELS = [
+  ...new Map(drivers.flatMap((driver) => driver.media).map((media) => [media.id, media])).values(),
+];
 const DEFAULT_MEDIA = /** @type {Media} */ (LABELS.find(({ id }) => id === "62x100"));
 
 /**

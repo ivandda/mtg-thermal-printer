@@ -4,7 +4,7 @@ import { element } from "./dom.js";
 
 const PRINTER_TIP = [
   "Printer not listed? Check that it's on and plugged in by USB.",
-  ...drivers.flatMap((driver) => driver.setupTip ?? []),
+  ...new Set(drivers.flatMap((driver) => driver.setupTip ?? [])),
 ].join(" ");
 
 /**

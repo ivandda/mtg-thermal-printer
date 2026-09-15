@@ -1,11 +1,11 @@
 /** @import { PrinterDriver } from "./types.js" */
-import { brotherQl700 } from "./brother-ql/driver.js";
+import { brotherQlDrivers } from "./brother-ql/driver.js";
 
 /**
  * Every supported printer. To add one, write a driver and list it here.
  * @type {PrinterDriver[]}
  */
-export const drivers = [brotherQl700];
+export const drivers = [...brotherQlDrivers];
 
 /** @param {USBDevice} device */
 export function driverFor(device) {
