@@ -3,17 +3,15 @@
 /** @import { Word } from "./rules-text.js" */
 import { placeImage } from "./arrangement.js";
 import { ditherToBitmap, pasteBitmap, thresholdToBitmap } from "./bitmap.js";
+import { canvasContext, fitLine, font, TEXT_THRESHOLD } from "./canvas-text.js";
 import { cardSize } from "./card.js";
 import { fitRules, parseRules } from "./rules-text.js";
 
-const FONT = '"Atkinson Hyperlegible Next", system-ui, sans-serif';
 const CARD_WIDTH_MM = 63;
 const LINE_HEIGHT = 1.25;
 /** Symbols are drawn about as tall as capital letters and spaced like a wide letter. */
 const SYMBOL_SIZE = 0.8;
 const SYMBOL_ADVANCE = 1;
-/** Keeps the grey edges of letters, so thin strokes of small text still print. */
-const TEXT_THRESHOLD = 190;
 /** Height ÷ width of the art box when there is rules text below it. */
 const ART_ASPECT = 0.62;
 /** Sizes in millimetres of a real card. */
@@ -34,11 +32,6 @@ const GAP = 2;
  */
 
 /** @typedef {{ x: number, y: number, width: number, height: number }} Rect */
-
-/** Waits for the typeface, which a canvas doesn't load by itself. */
-export async function loadFonts() {
-  await Promise.all([document.fonts.load(font(400, 16)), document.fonts.load(font(700, 16))]);
-}
 
 /**
  * Where the parts of a text card go on the label, in dots. The card is as large as a card image
@@ -279,20 +272,6 @@ function renderArt({ image, arrangement }, box, tone) {
 }
 
 /**
- * The largest size, up to `largest`, at which one line of text fits the width.
- * @param {OffscreenCanvasRenderingContext2D} context
- * @param {string} text
- * @param {number} weight
- * @param {number} largest
- * @param {number} width
- */
-function fitLine(context, text, weight, largest, width) {
-  context.font = font(weight, largest);
-  const measured = context.measureText(text).width;
-  return measured > width ? Math.max(largest / 2, (largest * width) / measured) : largest;
-}
-
-/**
  * @param {OffscreenCanvasRenderingContext2D} context
  * @param {number} from
  * @param {number} to
@@ -301,22 +280,4 @@ function fitLine(context, text, weight, largest, width) {
  */
 function rule(context, from, to, y, thickness) {
   context.fillRect(from, y - thickness / 2, to - from, thickness);
-}
-
-/**
- * @param {number} width
- * @param {number} height
- */
-function canvasContext(width, height) {
-  const context = new OffscreenCanvas(width, height).getContext("2d");
-  if (!context) throw new Error("Canvas is not available");
-  return context;
-}
-
-/**
- * @param {number} weight
- * @param {number} size
- */
-function font(weight, size) {
-  return `${weight} ${size}px ${FONT}`;
 }

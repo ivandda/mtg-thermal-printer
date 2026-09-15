@@ -38,6 +38,7 @@ function label(
     printableWidth,
     printableHeight,
     shape: kind === "round" ? "round" : "rectangle",
+    dpi: 300,
     offsetRight,
     feedMargin,
   };

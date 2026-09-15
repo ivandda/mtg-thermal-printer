@@ -4,6 +4,7 @@ import { createScryfallClient, ScryfallError } from "./scryfall/client.js";
 import { addressParam, updateAddress } from "./ui/address.js";
 import { createLabelPanel } from "./ui/label-panel.js";
 import { LabelSize } from "./ui/label-size.js";
+import { createMarkersPicker } from "./ui/markers-picker.js";
 import { createModes } from "./ui/modes.js";
 import { createPrintListDialog } from "./ui/print-list-dialog.js";
 import { bindPrinterButton } from "./ui/printer-button.js";
@@ -35,9 +36,17 @@ const tokens = createTokenEditor({
   },
   onPreview: views.openLabel,
 });
-const modes = createModes((mode) =>
-  mode === "create" ? panel.showToken(tokens.current()) : panel.showCards(),
-);
+const markers = createMarkersPicker({
+  onChange(counts) {
+    if (document.body.dataset.mode === "markers") panel.showMarkers(counts);
+  },
+  onPreview: views.openLabel,
+});
+const modes = createModes((mode) => {
+  if (mode === "create") panel.showToken(tokens.current());
+  else if (mode === "markers") panel.showMarkers(markers.current());
+  else panel.showCards();
+});
 const search = createSearch({
   scryfall,
   onSelect(card) {
@@ -49,7 +58,7 @@ createPrintListDialog({ printer, labelSize, printList });
 bindPrinterButton(printer, panel.showStatus);
 
 printer.restore();
-if (document.body.dataset.mode !== "create") openLinkedCard();
+if (document.body.dataset.mode === "find") openLinkedCard();
 
 /** Opens the card a shared or bookmarked address points to. */
 async function openLinkedCard() {
