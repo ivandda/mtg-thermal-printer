@@ -6,7 +6,7 @@ Search Magic: The Gathering cards and tokens and print them as stickers on a the
 
 ## What it does
 
-- **Search** tokens or any paper card, with [Scryfall syntax](https://scryfall.com/docs/syntax) (`c:g power>=4`). Pick the printing and side, and open the tokens and emblems a card makes.
+- **Search** tokens or any paper card, with [Scryfall syntax](https://scryfall.com/docs/syntax) (`c:g power>=4`). Pick the printing and side, or both sides of a double-faced card to fold, and open the tokens and emblems a card makes.
 - **Preview** the exact black-and-white print, with darkness, label size and border options.
 - **Print as image or text**: large rules text with mana symbols, art optional.
 - **Create your own** cards and tokens, or customize any card. Saved in your browser, with backup to a file.

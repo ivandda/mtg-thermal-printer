@@ -6,6 +6,7 @@
 import { CENTERED } from "./imaging/arrangement.js";
 import { canvasContext, loadFonts } from "./imaging/canvas-text.js";
 import { cardSize, renderCard, TONES } from "./imaging/card.js";
+import { foldedPage, foldMargin } from "./imaging/fold.js";
 import { loadImage } from "./imaging/images.js";
 import { layoutMarkers, renderMarkers } from "./imaging/marker-sheet.js";
 import { loadSymbols } from "./imaging/symbols.js";
@@ -25,6 +26,8 @@ import { loadStoredImage } from "./token-store.js";
  * @property {"card"} type
  * @property {ScryfallCard} card  The chosen printing.
  * @property {number} face
+ * @property {boolean} [bothSides]  Both faces of a double-faced card: on one piece to fold on a
+ *   continuous roll, otherwise on a label each. `face` is then ignored.
  * @property {"image" | "text"} [style]  Card image when missing, as saved before text style existed.
  * @property {Darkness} darkness
  * @property {boolean} cropBorder  Card image: leave out the black border.
@@ -59,6 +62,8 @@ import { loadStoredImage } from "./token-store.js";
 
 /** @typedef {keyof typeof TONES} Darkness */
 
+/** @typedef {(typeof TONES)[Darkness]} Tone */
+
 export const DARKNESS = Object.keys(TONES);
 
 /**
@@ -86,22 +91,43 @@ export async function renderDesign(design, media) {
     return [await renderText({ ...text, art }, media, tone)];
   }
 
-  const { card, face } = design;
+  if (!printsBothSides(design)) return [await renderFace(design, design.face, media, tone)];
+  const [front, back] = await Promise.all([0, 1].map((face) => renderFace(design, face, media, tone)));
+  return media.lengthMm ? [front, back] : [foldedPage(front, back, media)];
+}
+
+/**
+ * @param {CardDesign} design
+ * @param {number} face
+ * @param {Media} media
+ * @param {Tone} tone
+ */
+async function renderFace(design, face, media, tone) {
+  const { card } = design;
   if (design.style === "text") {
     const artUrl = design.art ? imageUrl(card, face, "art_crop") : undefined;
     const art = artUrl ? { image: await loadImage(artUrl), arrangement: CENTERED } : undefined;
     const { name, manaCost, typeLine, rules, stats } = cardText(card, face);
-    return [await renderText({ name, manaCost, typeLine, rules, stats, art }, media, tone)];
+    return renderText({ name, manaCost, typeLine, rules, stats, art }, media, tone);
   }
 
   // The PNG is larger than the print head is wide and has no JPEG blur on small text.
   const url = imageUrl(card, face, "png") ?? imageUrl(card, face);
   if (!url) throw new Error(`Scryfall has no image of ${card.name}.`);
   const image = await loadImage(url);
-  return [
-    renderCard(image, media, { tone, cropBorder: design.cropBorder && card.border_color !== "borderless" }),
-  ];
+  return renderCard(image, media, {
+    tone,
+    cropBorder: design.cropBorder && card.border_color !== "borderless",
+  });
 }
+
+/**
+ * Whether a design prints both faces of a double-faced card.
+ * @param {Design} design
+ * @returns {boolean}
+ */
+export const printsBothSides = (design) =>
+  design.type === "card" && Boolean(design.bothSides) && cardFaces(design.card).length > 1;
 
 /**
  * How long each label a design prints on is, in dots, without drawing it.
@@ -112,7 +138,9 @@ export function labelLengths(design, media) {
   if (design.type === "markers") {
     return layoutMarkers(design.counts, media, design.custom).map((page) => page.height);
   }
-  return [media.printableHeight || cardSize(media).height];
+  const length = media.printableHeight || cardSize(media).height;
+  if (!printsBothSides(design)) return [length];
+  return media.lengthMm ? [length, length] : [2 * (length + foldMargin(media))];
 }
 
 /**
@@ -142,7 +170,7 @@ export function paperLength(items, media) {
 /**
  * @param {TextCard} card
  * @param {Media} media
- * @param {{ black: number, white: number, gamma: number }} tone
+ * @param {Tone} tone
  */
 async function renderText(card, media, tone) {
   const [symbols] = await Promise.all([loadSymbols(`${card.manaCost} ${card.rules}`), loadFonts()]);
@@ -208,9 +236,11 @@ export function describeDesign(design) {
     return { name: design.name.trim() || "Untitled card", detail: details.join(", ") };
   }
   const { card, face, style, darkness, cropBorder, art } = design;
+  const both = printsBothSides(design);
   const details = [`${card.set_name}, #${card.collector_number}`];
+  if (both) details.push("both sides");
   if (style === "text") details.push(art ? "text with art" : "text");
   else if (cropBorder) details.push("no border");
   if (darkness !== "normal" && (style !== "text" || art)) details.push(darkness);
-  return { name: cardFaces(card)[face]?.name ?? card.name, detail: details.join(", ") };
+  return { name: (!both && cardFaces(card)[face]?.name) || card.name, detail: details.join(", ") };
 }
