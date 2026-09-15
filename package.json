@@ -2,7 +2,7 @@
   "name": "mtg-thermal-printer",
   "private": true,
   "description": "Search Magic: The Gathering cards and print them on a thermal label printer, right from the browser.",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "engines": {
     "node": ">=24"

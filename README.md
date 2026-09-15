@@ -80,4 +80,6 @@ The Brother QL encoding produces exactly the bytes of the [brother_ql](https://g
 
 ## License
 
-[MIT](LICENSE). Magic: The Gathering is a trademark of Wizards of the Coast. This project is not affiliated with or endorsed by Wizards of the Coast, Scryfall or Brother.
+Copyright © 2026 Ivan. Released under the [GNU AGPL-3.0](LICENSE): you can use, share and change it for free, and any version you distribute or host must stay open source under the same license.
+
+Magic: The Gathering is a trademark of Wizards of the Coast. This project is not affiliated with or endorsed by Wizards of the Coast, Scryfall or Brother.
