@@ -9,7 +9,7 @@ import { localStore } from "./storage.js";
  */
 
 const STORAGE_KEY = "print-list";
-const MAX_COPIES = 20;
+export const MAX_COPIES = 20;
 
 /** @param {unknown} value */
 export const clampCopies = (value) => Math.min(Math.max(Math.round(Number(value)) || 1, 1), MAX_COPIES);
