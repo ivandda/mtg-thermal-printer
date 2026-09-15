@@ -3,29 +3,104 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>MTG Thermal Printer · printer test</title>
-    <style>
-      body { font: 16px/1.5 system-ui, sans-serif; max-width: 36rem; margin: 3rem auto; padding: 0 1rem; }
-      button, input { font: inherit; padding: 0.5rem 0.75rem; margin: 0 0.5rem 0.5rem 0; }
-      output { display: block; margin-top: 1rem; }
-      canvas { display: block; width: 16rem; margin-top: 1rem; border: 1px solid #ccc; }
-    </style>
-    <script type="module" src="src/printer-test.js"></script>
+    <meta name="description" content="Search Magic: The Gathering cards and tokens and print them on a Brother QL label printer.">
+    <title>MTG Thermal Printer</title>
+    <link rel="icon" href="src/favicon.svg" type="image/svg+xml">
+    <link rel="preload" href="src/fonts/atkinson-hyperlegible-next.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="src/app.css">
+    <script type="module" src="src/app.js"></script>
   </head>
-  <body>
-    <h1>Printer test</h1>
-    <p>Connect a Brother QL-700 over USB (Editor Lite light off).</p>
-    <button id="connect" type="button">Connect printer</button>
-    <button id="print-test" type="button">Print test label</button>
+  <body data-view="results">
+    <header class="bar">
+      <a class="name" href="./">MTG Thermal Printer</a>
+      <button id="printer" class="printer" type="button">Connect printer</button>
+    </header>
 
-    <h2>Print a card</h2>
-    <form id="card-form">
-      <input id="card-name" type="search" placeholder="Card name, e.g. Pilot" aria-label="Card name" required>
-      <button type="submit">Preview</button>
-      <button id="print-card" type="button">Print card</button>
-    </form>
+    <main class="workspace">
+      <section class="browse" aria-label="Find a card">
+        <search>
+          <form id="search" class="search">
+            <input id="query" name="q" type="search" placeholder="Search, e.g. treasure or angel" aria-label="Search cards" autocomplete="off" enterkeyhint="search">
+            <fieldset class="segmented">
+              <legend class="visually-hidden">Search in</legend>
+              <label><input type="radio" name="scope" value="tokens" checked><span>Tokens</span></label>
+              <label><input type="radio" name="scope" value="all"><span>All cards</span></label>
+            </fieldset>
+          </form>
+        </search>
 
-    <output id="output" aria-live="polite"></output>
-    <canvas id="preview" hidden></canvas>
+        <div id="suggestions" class="suggestions">
+          <p>Common tokens:</p>
+          <button class="button small" type="button">Treasure</button>
+          <button class="button small" type="button">Clue</button>
+          <button class="button small" type="button">Food</button>
+          <button class="button small" type="button">Goblin</button>
+          <button class="button small" type="button">Soldier</button>
+          <button class="button small" type="button">Zombie</button>
+          <button class="button small" type="button">Spirit</button>
+          <button class="button small" type="button">Saproling</button>
+        </div>
+
+        <p id="results-status" class="results-status" aria-live="polite"></p>
+        <ul id="results" class="results"></ul>
+        <button id="more" class="button more" type="button" hidden>Show more</button>
+      </section>
+
+      <section class="label-panel" aria-label="Print">
+        <button id="back" class="button back" type="button">Back to results</button>
+
+        <figure id="label" class="label" data-state="empty">
+          <div class="dimension width"><span id="label-width">62 mm</span></div>
+          <div class="liner">
+            <div class="sticker">
+              <canvas id="preview" width="696" height="1109"></canvas>
+              <p class="placeholder">Pick a card to see how it prints.</p>
+            </div>
+          </div>
+          <div class="dimension length"><span id="label-length">100 mm</span></div>
+        </figure>
+
+        <div id="card-heading" class="card-heading" hidden>
+          <h2 id="card-name">Pick a card</h2>
+          <p id="card-set"></p>
+        </div>
+        <fieldset id="printings" class="printings" aria-label="Printings"></fieldset>
+
+        <form id="controls" class="controls">
+          <fieldset id="faces-field" class="field" hidden>
+            <legend>Side</legend>
+            <div id="faces" class="segmented"></div>
+          </fieldset>
+          <fieldset class="field">
+            <legend>Darkness</legend>
+            <div class="segmented">
+              <label><input type="radio" name="darkness" value="lighter"><span>Lighter</span></label>
+              <label><input type="radio" name="darkness" value="normal" checked><span>Normal</span></label>
+              <label><input type="radio" name="darkness" value="darker"><span>Darker</span></label>
+            </div>
+          </fieldset>
+          <div class="field copies">
+            <label for="copies">Copies</label>
+            <div class="stepper">
+              <button type="button" data-step="-1" aria-label="One fewer copy">−</button>
+              <input id="copies" name="copies" type="number" inputmode="numeric" min="1" max="20" value="1">
+              <button type="button" data-step="1" aria-label="One more copy">+</button>
+            </div>
+          </div>
+          <div class="print-bar">
+            <button id="print" class="print" type="submit" disabled>Print label</button>
+            <p id="print-status" class="print-status" aria-live="polite"></p>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <footer class="credits">
+      <p>
+        Card data and images from <a href="https://scryfall.com">Scryfall</a>. Magic: The Gathering is a
+        trademark of Wizards of the Coast. Not affiliated with Wizards of the Coast, Scryfall or Brother.
+        <a href="https://github.com/ivandda/mtg-thermal-printer">Source code</a>
+      </p>
+    </footer>
   </body>
 </html>

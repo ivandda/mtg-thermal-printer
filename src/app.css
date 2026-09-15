@@ -1,0 +1,632 @@
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("fonts/atkinson-hyperlegible-next.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light dark;
+  --desk: #e8e9eb;
+  --surface: #f7f7f8;
+  --text: #2b2d31;
+  --muted: #5d6168;
+  --line: #c5c8cd;
+  --liner: #d5d8dc;
+  --paper: #ffffff;
+  --ready: #18794e;
+  --attention: #9a4f00;
+  --radius: 6px;
+  font-family: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--desk);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --desk: #1d1e20;
+    --surface: #2a2b2e;
+    --text: #e9eaec;
+    --muted: #a6a9af;
+    --line: #46484d;
+    --liner: #35373b;
+    --attention: #f0a54a;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  /* biome-ignore lint/complexity/noImportantStyles: the hidden attribute must win over component display rules */
+  display: none !important;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+img,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Buttons and inputs */
+
+.button {
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.button.small {
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+}
+
+@media (hover: hover) {
+  .button:hover,
+  .segmented label:hover span,
+  .stepper button:hover {
+    border-color: var(--muted);
+  }
+}
+
+.segmented {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.segmented label {
+  position: relative;
+  flex: 1;
+}
+
+.segmented input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segmented span {
+  display: block;
+  min-height: var(--control-height, 2.5rem);
+  padding: var(--control-padding, 0.4375rem) 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.segmented label + label span {
+  border-left-width: 0;
+}
+
+.segmented label:first-of-type span {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.segmented label:last-of-type span {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.segmented input:checked + span {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--desk);
+}
+
+.segmented input:focus-visible + span {
+  position: relative;
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* Header */
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.printer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  max-width: 60%;
+  padding: 0 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.printer::before {
+  content: "";
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  border: 2px solid var(--muted);
+  border-radius: 50%;
+}
+
+.printer[data-state="ready"]::before {
+  border-color: var(--ready);
+  background: var(--ready);
+}
+
+.printer[data-state="error"]::before {
+  border-color: var(--attention);
+  background: var(--attention);
+}
+
+.printer .detail {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+}
+
+/* Layout */
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: 3rem;
+  align-items: start;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* Search and results */
+
+.search {
+  --control-height: 3rem;
+  --control-padding: 0.6875rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.search input[type="search"] {
+  flex: 1 1 18rem;
+  min-height: 3rem;
+  padding: 0 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 1.125rem;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.suggestions p {
+  margin: 0 0.25rem 0 0;
+  color: var(--muted);
+}
+
+.results-status {
+  min-height: 1.5em;
+  margin: 1.5rem 0 1rem;
+  color: var(--muted);
+}
+
+.results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 1.5rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result {
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.result-image {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 488 / 680;
+  border-radius: 4.75% / 3.4%;
+  background: var(--line);
+}
+
+.result-name {
+  font-size: 0.9375rem;
+  line-height: 1.3;
+}
+
+.result[aria-pressed="true"] .result-image {
+  outline: 3px solid var(--text);
+  outline-offset: 3px;
+}
+
+.more {
+  display: block;
+  margin: 2rem auto 0;
+}
+
+/* Label panel */
+
+.label-panel {
+  position: sticky;
+  top: 1.5rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.back {
+  display: none;
+}
+
+.label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.375rem 0.625rem;
+  justify-self: center;
+  width: min(100%, 15rem);
+  margin: 0;
+}
+
+.liner {
+  grid-column: 1;
+  grid-row: 2;
+  padding: 1rem 0.625rem;
+  border-radius: 2px;
+  background: var(--liner);
+}
+
+.sticker {
+  position: relative;
+  padding: 3% 2.5%;
+  border-radius: 5% / 3.2%;
+  background: var(--paper);
+}
+
+.label.continuous .sticker {
+  border-radius: 0;
+}
+
+.sticker canvas {
+  width: 100%;
+  height: auto;
+}
+
+.label[data-state="empty"] canvas {
+  visibility: hidden;
+}
+
+.label[data-state="loading"] canvas {
+  opacity: 0.35;
+}
+
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 2rem;
+  color: #5d6168;
+  text-align: center;
+}
+
+.label:not([data-state="empty"]) .placeholder {
+  display: none;
+}
+
+/* Dimension lines, drawn like on a technical drawing: end ticks, a line, the measurement. */
+
+.dimension {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-inline: 1px solid var(--muted);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.dimension::before,
+.dimension::after {
+  content: "";
+  flex: 1;
+  border-block-start: 1px solid var(--line);
+}
+
+.dimension.width {
+  grid-column: 1;
+  grid-row: 1;
+  block-size: 0.75rem;
+  margin-inline: 0.625rem;
+}
+
+.dimension.length {
+  grid-column: 2;
+  grid-row: 2;
+  block-size: 0.75rem;
+  margin-inline: 1rem;
+  writing-mode: vertical-rl;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .label.feeding canvas {
+    animation: feed 1.2s steps(30) both;
+  }
+}
+
+/* The label appears line by line, the way the print head draws it. */
+@keyframes feed {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+.card-heading h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.card-heading p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+.printings {
+  display: flex;
+  min-inline-size: 0;
+  border: 0;
+  gap: 0.625rem;
+  margin: -4px;
+  padding: 4px 4px 8px;
+  overflow-x: auto;
+}
+
+.printings:empty {
+  display: none;
+}
+
+.printings button {
+  flex: none;
+  width: 3.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.printing-image {
+  width: 100%;
+  aspect-ratio: 146 / 204;
+  border-radius: 4.75% / 3.4%;
+  opacity: 0.65;
+}
+
+.printings [aria-pressed="true"] .printing-image {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+  opacity: 1;
+}
+
+/* Print controls */
+
+.controls {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* A floated legend is laid out like any other child, so it can share the grid row with its control. */
+.field legend {
+  float: left;
+  padding: 0;
+  font-weight: 700;
+}
+
+.copies label {
+  font-weight: 700;
+}
+
+.stepper {
+  display: flex;
+  justify-self: end;
+}
+
+.stepper button,
+.stepper input {
+  min-height: 2.5rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.stepper button {
+  width: 2.75rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.stepper button:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.stepper button:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.stepper input {
+  width: 3.5rem;
+  border-inline-width: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  appearance: textfield;
+}
+
+.stepper input::-webkit-inner-spin-button,
+.stepper input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.print {
+  width: 100%;
+  min-height: 3.25rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--ready);
+  color: #ffffff;
+  font-size: 1.125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.print:disabled {
+  background: var(--line);
+  color: var(--muted);
+  cursor: default;
+}
+
+.print-status {
+  min-height: 1.5em;
+  margin: 0.5rem 0 0;
+}
+
+.credits {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 3rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.credits p {
+  max-width: 70ch;
+  margin: 0;
+}
+
+/* Small screens: results and the label take turns filling the screen. */
+
+@media (max-width: 52rem) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .bar {
+    padding-inline: 1rem;
+  }
+
+  .printer[data-state="ready"] .detail {
+    display: none;
+  }
+
+  .label-panel {
+    position: static;
+  }
+
+  body:not([data-view="label"]) .label-panel,
+  body[data-view="label"] .browse,
+  body[data-view="label"] .credits {
+    display: none;
+  }
+
+  .back {
+    display: block;
+    justify-self: start;
+  }
+
+  .label {
+    justify-self: center;
+    width: min(100%, 20rem);
+  }
+
+  .results {
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  }
+
+  .print-bar {
+    position: sticky;
+    bottom: 0;
+    padding-block: 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+    background: var(--desk);
+  }
+}

@@ -10,10 +10,15 @@
  * The parts of a Scryfall card object this app uses (https://scryfall.com/docs/api/cards).
  * @typedef {object} ScryfallCard
  * @property {string} id
+ * @property {string} [oracle_id]
  * @property {string} name
- * @property {{ large: string }} [image_uris]
- * @property {{ name: string, image_uris?: { large: string } }[]} [card_faces]
+ * @property {string} set_name
+ * @property {string} collector_number
+ * @property {ImageUris} [image_uris]
+ * @property {{ name: string, image_uris?: ImageUris }[]} [card_faces]
  */
+
+/** @typedef {{ small: string, normal: string, large: string }} ImageUris */
 
 /** @typedef {{ data: ScryfallCard[], total_cards: number, has_more: boolean }} ScryfallList */
 
@@ -98,12 +103,13 @@ export function createScryfallClient({
     /**
      * Cards matching a search query in Scryfall syntax (https://scryfall.com/docs/syntax).
      * @param {string} query
-     * @param {number} [page]
+     * @param {{ page?: number, unique?: "cards" | "art" | "prints", order?: string }} [options]
      * @returns {Promise<ScryfallList>}
      */
-    async search(query, page = 1) {
+    async search(query, { page = 1, unique = "cards", order = "name" } = {}) {
+      const params = new URLSearchParams({ q: query, unique, order, page: String(page) });
       try {
-        return await get(`/cards/search?${new URLSearchParams({ q: query, page: String(page) })}`);
+        return await get(`/cards/search?${params}`);
       } catch (error) {
         if (error instanceof ScryfallError && error.status === 404) {
           return { data: [], total_cards: 0, has_more: false };
@@ -122,9 +128,11 @@ export function createScryfallClient({
 }
 
 /**
- * Large image of a card's front face.
+ * Image of one face of a card. Double-faced cards have an image per face; other cards share one.
  * @param {ScryfallCard} card
+ * @param {number} [face]
+ * @param {keyof ImageUris} [size]
  */
-export function imageUrl(card) {
-  return card.image_uris?.large ?? card.card_faces?.[0]?.image_uris?.large;
+export function imageUrl(card, face = 0, size = "large") {
+  return (card.card_faces?.[face]?.image_uris ?? card.image_uris)?.[size];
 }

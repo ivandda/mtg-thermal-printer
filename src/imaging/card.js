@@ -3,6 +3,13 @@ import { ditherToBitmap } from "./bitmap.js";
 
 const CARD_ASPECT = 88 / 63; // height ÷ width of a real Magic card
 
+/** Tone presets behind the darkness control; see ditherToBitmap. */
+export const TONES = {
+  lighter: { black: 55, white: 185, gamma: 0.8 },
+  normal: { black: 40, white: 195, gamma: 0.9 },
+  darker: { black: 25, white: 215, gamma: 1.05 },
+};
+
 /**
  * The largest card-shaped box that fits the printable area.
  * @param {Media} media
@@ -20,9 +27,10 @@ export function cardSize(media) {
  * cropped to card proportions, never stretched.
  * @param {ImageBitmap} image
  * @param {Media} media
+ * @param {{ black: number, white: number, gamma: number }} [tone]
  * @returns {Bitmap}
  */
-export function renderCard(image, media) {
+export function renderCard(image, media, tone = TONES.normal) {
   const card = cardSize(media);
   const width = media.printableWidth;
   const height = media.printableHeight || card.height;
@@ -46,5 +54,5 @@ export function renderCard(image, media) {
     card.width,
     card.height,
   );
-  return ditherToBitmap(context.getImageData(0, 0, width, height));
+  return ditherToBitmap(context.getImageData(0, 0, width, height), tone);
 }
