@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { layoutMarkers, packRows } from "../../src/imaging/marker-sheet.js";
+import { layoutMarkers } from "../../src/imaging/marker-sheet.js";
 import { MEDIA } from "../../src/printers/brother-ql/media.js";
 
 /** @param {string} id */
@@ -10,39 +10,44 @@ function media(id) {
   return found;
 }
 
-const BOX = { width: 40, height: 10 };
-
-test("boxes fill a row, then wrap, each row centred", () => {
-  const [page] = packRows([BOX, BOX, BOX], { width: 100, height: 0 }, 10);
-  assert.equal(page.height, 30);
-  assert.deepEqual(page.places, [
-    { index: 0, x: 5, y: 0 },
-    { index: 1, x: 55, y: 0 },
-    { index: 2, x: 30, y: 20 },
-  ]);
+test("markers side by side touch and fill the label's width", () => {
+  const label = media("62");
+  const [page] = layoutMarkers({ flying: 1, haste: 1 }, label);
+  const [left, right] = page.markers;
+  assert.equal(left.x, 0);
+  assert.equal(right.x, left.x + left.width);
+  assert.equal(right.x + right.width, label.printableWidth);
+  assert.equal(right.y, left.y);
 });
 
-test("a full page continues on the next one, centred vertically", () => {
-  const pages = packRows([BOX, BOX, BOX], { width: 100, height: 25 }, 10);
-  assert.equal(pages.length, 2);
-  assert.deepEqual(pages[1].places, [{ index: 2, x: 30, y: 8 }]);
+test("a marker alone in its row stretches across it", () => {
+  const label = media("62");
+  const [page] = layoutMarkers({ haste: 3 }, label);
+  assert.deepEqual(page.markers.map(({ x, width }) => [x, width]).at(-1), [0, label.printableWidth]);
 });
 
-test("a few keywords fit on one label, many continue onto more", () => {
-  assert.equal(layoutMarkers({ flying: 2, haste: 2 }, media("62x100")).length, 1);
-  // A 62 × 100 mm label holds two keywords across and eight rows down.
-  const pages = layoutMarkers({ flying: 20, haste: 20 }, media("62x100"));
+test("rows stack with no space and continue onto the next label when one is full", () => {
+  const label = media("62x100");
+  const pages = layoutMarkers({ flying: 20, haste: 20 }, label);
+  const rowHeight = pages[0].markers[0].height;
+  const perPage = 2 * Math.floor(label.printableHeight / rowHeight);
   assert.deepEqual(
     pages.map((page) => page.markers.length),
-    [16, 16, 8],
+    [perPage, perPage, 40 - 2 * perPage].filter(Boolean),
   );
+  for (const page of pages) {
+    for (const [index, { y }] of page.markers.entries()) assert.equal(y, Math.floor(index / 2) * rowHeight);
+  }
 });
 
-test("a continuous roll prints one label as long as the markers need", () => {
-  const few = layoutMarkers({ monarch: 1 }, media("62"));
-  const many = layoutMarkers({ monarch: 10, poison: 4 }, media("62"));
-  assert.equal(many.length, 1);
-  assert.ok(many[0].height > few[0].height);
+test("a continuous roll prints one label exactly as long as the markers", () => {
+  const [few] = layoutMarkers({ monarch: 10 }, media("62"));
+  const pages = layoutMarkers({ monarch: 10, poison: 4 }, media("62"));
+  assert.equal(pages.length, 1);
+  const last = pages[0].markers.at(-1);
+  assert.ok(last);
+  assert.equal(pages[0].height, last.y + last.height);
+  assert.ok(pages[0].height > few.height);
 });
 
 test("markers shrink to fit a narrow label and stay inside a round one", () => {
