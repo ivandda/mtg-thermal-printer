@@ -195,6 +195,8 @@ export function createScryfallClient({
 
 /** Related cards that aren't tokens but are printed like them: emblems, dungeons and cards like The Monarch. */
 const TOKEN_LIKE = /^(Emblem|Dungeon|Card)\b/;
+/** Cards typed "Card" that stand in for others rather than being made: set checklists and substitutes. */
+const STAND_IN = /\bChecklist\b|^Double-Faced Substitute Card$/;
 
 /**
  * The tokens, emblems and game cards a card makes, once each. Other cards it's related to, such as
@@ -207,7 +209,8 @@ export function madeBy(card) {
     (part) =>
       part.id !== card.id &&
       part.name !== card.name &&
-      (part.component === "token" || TOKEN_LIKE.test(part.type_line)),
+      (part.component === "token" || TOKEN_LIKE.test(part.type_line)) &&
+      !STAND_IN.test(part.name),
   );
   return [...new Map(parts.map((part) => [part.id, part])).values()];
 }
