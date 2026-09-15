@@ -66,7 +66,8 @@ async function openLinkedCard() {
   const id = addressParam("card");
   if (!id) return;
   try {
-    panel.showCard(await scryfall.card(id), Number(addressParam("face")) || 0);
+    const face = addressParam("face");
+    panel.showCard(await scryfall.card(id), face === "both" ? "both" : Number(face) || 0);
     views.openLabel();
   } catch (error) {
     const missing = error instanceof ScryfallError && error.status === 404;

@@ -46,3 +46,23 @@ test("markers count every label they continue onto", () => {
 test("a die-cut label is as long as its printable area", () => {
   assert.deepEqual(labelLengths(TREASURE, { ...LABEL, feedMargin: 0 }), [1109]);
 });
+
+test("both sides of a double-faced card take one folded piece on a roll and a label each otherwise", () => {
+  /** @type {Design} */
+  const delver = {
+    ...TREASURE,
+    card: {
+      ...TREASURE.card,
+      name: "Delver of Secrets // Insectile Aberration",
+      card_faces: ["Delver of Secrets", "Insectile Aberration"].map((name) => ({
+        name,
+        image_uris: { small: "", normal: "", large: "", png: "", art_crop: "" },
+      })),
+    },
+    bothSides: true,
+  };
+  assert.deepEqual(labelLengths(delver, ROLL), [2 * (972 + 35)]);
+  assert.deepEqual(labelLengths(delver, LABEL), [1109, 1109]);
+  assert.deepEqual(labelLengths({ ...delver, bothSides: false }, LABEL), [1109]);
+  assert.deepEqual(labelLengths({ ...TREASURE, bothSides: true }, LABEL), [1109]);
+});

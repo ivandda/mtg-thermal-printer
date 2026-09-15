@@ -13,8 +13,8 @@ const SIZES = {
 };
 /** Length of a continuous label that has no markers on it yet. */
 const EMPTY_LENGTH_MM = 20;
-/** Dashed lines to cut along, in millimetres. */
-const CUT_LINE = { width: 0.3, dash: 1.2, gap: 0.9 };
+/** Dashed lines to cut or fold along, in millimetres. */
+export const CUT_LINE = { width: 0.3, dash: 1.2, gap: 0.9 };
 const REMINDER_LINES = 4;
 
 /** @typedef {{ x: number, y: number, width: number, height: number }} Rect */

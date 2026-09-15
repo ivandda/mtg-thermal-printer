@@ -58,6 +58,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     controls: element("#controls", HTMLFormElement),
     facesField: element("#faces-field", HTMLFieldSetElement),
     faces: element("#faces", HTMLElement),
+    bothHint: element("#both-hint", HTMLElement),
     styleField: element("#style-field", HTMLFieldSetElement),
     arrangeFields: element("#arrange-fields", HTMLElement),
     darknessField: element("#darkness-field", HTMLFieldSetElement),
@@ -80,6 +81,8 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     /** The chosen printing. @type {ScryfallCard | undefined} */
     card: undefined,
     face: 0,
+    /** Both faces of a double-faced card instead of `face`. */
+    bothSides: false,
     /** @type {Token | undefined} */
     token: undefined,
     /** @type {MarkerSelection} */
@@ -117,6 +120,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
       type: "card",
       card: pickCard(state.card),
       face: state.face,
+      bothSides: state.bothSides,
       style: style(),
       darkness: darkness(),
       cropBorder: ui.cropBorder.checked,
@@ -128,12 +132,13 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
 
   /**
    * @param {ScryfallCard} card
-   * @param {number} [face]
+   * @param {number | "both"} [face]
    */
   function showCard(card, face = 0) {
     state.source = "card";
     state.card = card;
-    state.face = face;
+    state.bothSides = face === "both";
+    state.face = face === "both" ? 0 : face;
     ui.printings.replaceChildren();
     ui.status.textContent = "";
     showPrinting();
@@ -250,18 +255,37 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     if (!card) return;
     const faces = cardFaces(card);
     if (!faces[state.face]) state.face = 0;
+    if (faces.length < 2) state.bothSides = false;
+    /**
+     * Sides are named by where they are, which fits the panel; the face's own name is in the tooltip,
+     * for screen readers, and in the heading.
+     * @param {string} value
+     * @param {string} text
+     * @param {string} title
+     * @param {boolean} checked
+     */
+    const choice = (value, text, title, checked) => {
+      const input = Object.assign(document.createElement("input"), {
+        type: "radio",
+        name: "face",
+        value,
+        checked,
+      });
+      input.setAttribute("aria-label", title);
+      const label = Object.assign(document.createElement("label"), { title });
+      label.append(input, Object.assign(document.createElement("span"), { textContent: text }));
+      return label;
+    };
     ui.faces.replaceChildren(
-      ...faces.map((face, index) => {
-        const input = Object.assign(document.createElement("input"), {
-          type: "radio",
-          name: "face",
-          value: String(index),
-          checked: index === state.face,
-        });
-        const label = document.createElement("label");
-        label.append(input, Object.assign(document.createElement("span"), { textContent: face.name }));
-        return label;
-      }),
+      ...faces.map((face, index) =>
+        choice(
+          String(index),
+          index === 0 ? "Front" : "Back",
+          face.name,
+          !state.bothSides && index === state.face,
+        ),
+      ),
+      ...(faces.length > 1 ? [choice("both", "Both sides", "Both sides", state.bothSides)] : []),
     );
     showHeading();
     showOptions();
@@ -272,7 +296,8 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
 
   /** Keeps the printing and side in the address, so the page can be bookmarked or shared. */
   function rememberCard() {
-    updateAddress({ card: state.card?.id, face: state.face ? String(state.face) : undefined });
+    const face = state.bothSides ? "both" : state.face ? String(state.face) : undefined;
+    updateAddress({ card: state.card?.id, face });
   }
 
   /* Tokens */
@@ -336,7 +361,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
       name = state.token?.name.trim() || "New card";
       ui.cardSet.textContent = state.token ? customKind(state.token) : "";
     } else if (state.card) {
-      name = cardFaces(state.card)[state.face]?.name ?? state.card.name;
+      name = (!state.bothSides && cardFaces(state.card)[state.face]?.name) || state.card.name;
       ui.cardSet.textContent = `${state.card.set_name}, #${state.card.collector_number}`;
     }
     ui.cardName.textContent = name;
@@ -353,6 +378,10 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     ui.printings.hidden = !card;
     ui.related.hidden = !card || ui.relatedList.childElementCount === 0;
     ui.facesField.hidden = !card || !state.card || cardFaces(state.card).length < 2;
+    ui.bothHint.hidden = ui.facesField.hidden || !state.bothSides;
+    ui.bothHint.textContent = labelSize.current.lengthMm
+      ? "Each side prints on its own label."
+      : "Both sides print on one piece. Fold it on the dashed line.";
     ui.styleField.hidden = !card;
     ui.borderOption.hidden = !card || text;
     ui.artOption.hidden = !card || !text;
@@ -525,7 +554,10 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     // The label size menu, the copies stepper and the image controls have their own listeners.
     if (!(target instanceof HTMLInputElement) || target === ui.copies || ui.arrangeFields.contains(target))
       return;
-    if (target.name === "face") state.face = Number(target.value);
+    if (target.name === "face") {
+      state.bothSides = target.value === "both";
+      if (!state.bothSides) state.face = Number(target.value);
+    }
     writeSetting("style", style());
     writeSetting("darkness", darkness());
     writeSetting("cropBorder", ui.cropBorder.checked);
@@ -550,6 +582,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
   bindStepper(ui.copiesStepper, updateButtons);
 
   labelSize.addEventListener("change", () => {
+    showOptions();
     if (design()) updatePreview();
     else showLabelSize(labelSize.current);
   });

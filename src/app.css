@@ -1045,6 +1045,10 @@ body:not([data-mode="markers"]) .markers {
   font-weight: 700;
 }
 
+.both-hint {
+  grid-column: 2;
+}
+
 .stepper {
   display: flex;
   justify-self: end;
