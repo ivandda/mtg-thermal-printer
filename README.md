@@ -12,6 +12,7 @@ Search Magic: The Gathering cards and tokens and print them as stickers on a the
 - Pick the label size, or let a connected printer report the roll it has loaded.
 - Optionally leave out the black border, so the art and text print larger.
 - Print one or several copies; the printer cuts after each label.
+- Collect labels in a print list, each with its own options and copies, and print them all at once.
 
 On 62 × 100 mm die-cut labels (Brother DK-11202) a card prints at 59 × 82 mm, about 94% of a real card.
 
