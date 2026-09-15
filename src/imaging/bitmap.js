@@ -3,12 +3,14 @@
 /** @typedef {{ width: number, height: number, data: Uint8ClampedArray }} RgbaImage  e.g. canvas ImageData */
 
 /**
- * Converts drawings (text, lines) to a 1-bit bitmap: anything darker than mid-grey prints black.
+ * Converts drawings (text, lines) to a 1-bit bitmap: anything darker than `threshold` prints black.
+ * A higher threshold keeps the anti-aliased edges of small text, which makes it bolder.
  * @param {RgbaImage} image
+ * @param {number} [threshold]  Brightness 0–255.
  * @returns {Bitmap}
  */
-export function thresholdToBitmap(image) {
-  const pixels = Uint8Array.from(paperBrightness(image), (value) => (value < 128 ? 1 : 0));
+export function thresholdToBitmap(image, threshold = 128) {
+  const pixels = Uint8Array.from(paperBrightness(image), (value) => (value < threshold ? 1 : 0));
   return { width: image.width, height: image.height, pixels };
 }
 
@@ -68,6 +70,23 @@ export function shrinkBitmap(bitmap, width) {
     }
   }
   return { width, height, data };
+}
+
+/**
+ * Copies `source` onto `target` with its top-left corner at (x, y), cut off at the target's edges.
+ * @param {Bitmap} target
+ * @param {Bitmap} source
+ * @param {number} x
+ * @param {number} y
+ */
+export function pasteBitmap(target, source, x, y) {
+  for (let row = Math.max(0, -y); row < source.height && y + row < target.height; row++) {
+    const from = row * source.width;
+    const to = (y + row) * target.width + x;
+    const start = Math.max(0, -x);
+    const end = Math.min(source.width, target.width - x);
+    if (end > start) target.pixels.set(source.pixels.subarray(from + start, from + end), to + start);
+  }
 }
 
 /**

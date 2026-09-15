@@ -35,7 +35,11 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList }) {
     controls: element("#controls", HTMLFormElement),
     facesField: element("#faces-field", HTMLFieldSetElement),
     faces: element("#faces", HTMLElement),
+    darknessField: element("#darkness-field", HTMLFieldSetElement),
+    borderOption: element("#border-option", HTMLElement),
     cropBorder: element("#crop-border", HTMLInputElement),
+    artOption: element("#art-option", HTMLElement),
+    includeArt: element("#include-art", HTMLInputElement),
     copiesStepper: element("#copies-stepper", HTMLElement),
     copies: element("#copies", HTMLInputElement),
     addToList: element("#add-to-list", HTMLButtonElement),
@@ -43,6 +47,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList }) {
     status: element("#print-status", HTMLElement),
   };
   const darknessChoice = /** @type {RadioNodeList} */ (ui.controls.elements.namedItem("darkness"));
+  const styleChoice = /** @type {RadioNodeList} */ (ui.controls.elements.namedItem("style"));
 
   const state = {
     /** The chosen printing. @type {ScryfallCard | undefined} */
@@ -55,6 +60,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList }) {
   let renderId = 0;
 
   const darkness = () => /** @type {Darkness} */ (darknessChoice.value || "normal");
+  const style = () => (styleChoice.value === "text" ? "text" : "image");
   const copies = () => clampCopies(ui.copies.value);
 
   /** @returns {Design | undefined} */
@@ -64,9 +70,19 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList }) {
       type: "card",
       card: pickCard(state.card),
       face: state.face,
+      style: style(),
       darkness: darkness(),
       cropBorder: ui.cropBorder.checked,
+      art: ui.includeArt.checked,
     };
+  }
+
+  /** Shows only the options that change the label: the border for card images, art for text. */
+  function showStyleOptions() {
+    const text = style() === "text";
+    ui.borderOption.hidden = text;
+    ui.artOption.hidden = !text;
+    ui.darknessField.hidden = text && !ui.includeArt.checked;
   }
 
   /* Card and printings */
@@ -265,8 +281,11 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList }) {
     const face = new FormData(ui.controls).get("face");
     if (face !== null) state.face = Number(face);
     rememberCard();
+    writeSetting("style", style());
     writeSetting("darkness", darkness());
     writeSetting("cropBorder", ui.cropBorder.checked);
+    writeSetting("art", ui.includeArt.checked);
+    showStyleOptions();
     showCardName();
     updatePreview();
   });
@@ -299,6 +318,9 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList }) {
   if (typeof savedDarkness === "string" && DARKNESS.includes(savedDarkness))
     darknessChoice.value = savedDarkness;
   ui.cropBorder.checked = readSetting("cropBorder") === true;
+  styleChoice.value = readSetting("style") === "text" ? "text" : "image";
+  ui.includeArt.checked = readSetting("art") === true;
+  showStyleOptions();
   showLabelSize(labelSize.current);
   updateButtons();
 

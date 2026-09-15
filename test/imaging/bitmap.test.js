@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ditherToBitmap, shrinkBitmap, thresholdToBitmap } from "../../src/imaging/bitmap.js";
+import { ditherToBitmap, pasteBitmap, shrinkBitmap, thresholdToBitmap } from "../../src/imaging/bitmap.js";
 
 /**
  * A uniform image of one grey level.
@@ -47,4 +47,18 @@ test("shrinking keeps the bitmap's proportions", () => {
   const preview = shrinkBitmap(page, 232);
   assert.deepEqual([preview.width, preview.height], [232, 370]);
   assert.equal(preview.data[0], 0);
+});
+
+test("pasting copies dots and cuts them off at the edges", () => {
+  const target = { width: 4, height: 3, pixels: new Uint8Array(12) };
+  const source = { width: 2, height: 2, pixels: Uint8Array.of(1, 1, 1, 0) };
+  pasteBitmap(target, source, 3, -1);
+  pasteBitmap(target, source, 0, 1);
+  assert.deepEqual([...target.pixels], [0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0]);
+});
+
+test("a higher threshold turns light grey into ink", () => {
+  const grey = { width: 1, height: 1, data: Uint8ClampedArray.of(160, 160, 160, 255) };
+  assert.deepEqual([...thresholdToBitmap(grey).pixels], [0]);
+  assert.deepEqual([...thresholdToBitmap(grey, 190).pixels], [1]);
 });

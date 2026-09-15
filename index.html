@@ -82,6 +82,13 @@
             <div id="faces" class="segmented"></div>
           </fieldset>
           <fieldset class="field">
+            <legend>Style</legend>
+            <div class="segmented">
+              <label><input type="radio" name="style" value="image" checked><span>Card image</span></label>
+              <label><input type="radio" name="style" value="text"><span>Text</span></label>
+            </div>
+          </fieldset>
+          <fieldset id="darkness-field" class="field">
             <legend>Darkness</legend>
             <div class="segmented">
               <label><input type="radio" name="darkness" value="lighter"><span>Lighter</span></label>
@@ -89,9 +96,13 @@
               <label><input type="radio" name="darkness" value="darker"><span>Darker</span></label>
             </div>
           </fieldset>
-          <label class="checkbox">
+          <label id="border-option" class="checkbox">
             <input id="crop-border" name="crop-border" type="checkbox">
             Print without the black border
+          </label>
+          <label id="art-option" class="checkbox" hidden>
+            <input id="include-art" name="include-art" type="checkbox">
+            Include the art
           </label>
           <div class="field copies">
             <label for="copies">Copies</label>
