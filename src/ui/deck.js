@@ -24,6 +24,9 @@ export function createDeck({ scryfall, printList, onSelect }) {
     lookUp: element("#look-up-deck", HTMLButtonElement),
     status: element("#deck-status", HTMLElement),
     missing: element("#deck-missing", HTMLElement),
+    view: element("#deck-view", HTMLFieldSetElement),
+    viewCards: element("#deck-view-cards", HTMLElement),
+    viewTokens: element("#deck-view-tokens", HTMLElement),
     cards: element("#deck-cards", HTMLElement),
     basicsOption: element("#basics-option", HTMLElement),
     basics: element("#include-basics", HTMLInputElement),
@@ -41,6 +44,17 @@ export function createDeck({ scryfall, printList, onSelect }) {
   /** @type {DeckToken[]} */
   let tokens = [];
   let searchId = 0;
+  /** Which of the deck's cards and tokens is shown when it has both. */
+  let view = readSetting("deckView") === "tokens" ? "tokens" : "cards";
+
+  for (const input of ui.view.elements) {
+    if (!(input instanceof HTMLInputElement)) continue;
+    input.addEventListener("change", () => {
+      view = input.value === "tokens" ? "tokens" : "cards";
+      writeSetting("deckView", view);
+      showView();
+    });
+  }
 
   ui.form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -111,7 +125,7 @@ export function createDeck({ scryfall, printList, onSelect }) {
           ? "None of these cards were found."
           : tokens.length === 0
             ? `${listed}. No tokens, emblems or game cards.`
-            : `${listed} and ${tokens.length === 1 ? "1 token" : `${tokens.length} tokens`}`;
+            : "";
       ui.missing.hidden = found.missing.length === 0;
       ui.missing.textContent = `Not found, check the spelling: ${found.missing.join(", ")}.`;
       showCards();
@@ -136,7 +150,6 @@ export function createDeck({ scryfall, printList, onSelect }) {
     const basics = total(cards.filter(({ card }) => isBasicLand(card)));
     const printed = printedCards();
     const twoSided = total(printed.filter(({ card }) => cardFaces(card).length > 1));
-    ui.cards.hidden = cards.length === 0;
     ui.basicsOption.hidden = basics === 0;
     ui.basicsLabel.textContent = basics === 1 ? "Include 1 basic land" : `Include ${basics} basic lands`;
     ui.bothSides.hidden = twoSided === 0;
@@ -147,12 +160,27 @@ export function createDeck({ scryfall, printList, onSelect }) {
     ui.addCards.textContent = `Add ${cardCount(total(printed))} to the print list`;
     ui.addCards.disabled = printed.length === 0;
     ui.cardsAdded.textContent = "";
+    showView();
   }
 
   function showTokens() {
     ui.tokens.replaceChildren(...tokens.map(tokenItem));
-    ui.tokensGroup.hidden = tokens.length === 0;
     ui.tokensAdded.textContent = "";
+    showView();
+  }
+
+  /** Cards or tokens, with a switch between them when the deck makes tokens. */
+  function showView() {
+    const both = tokens.length > 0;
+    const shown = both ? view : "cards";
+    ui.view.hidden = !both;
+    for (const input of ui.view.elements) {
+      if (input instanceof HTMLInputElement) input.checked = input.value === shown;
+    }
+    ui.viewCards.textContent = `Cards (${total(cards)})`;
+    ui.viewTokens.textContent = `Tokens (${tokens.length})`;
+    ui.cards.hidden = cards.length === 0 || shown !== "cards";
+    ui.tokensGroup.hidden = !both || shown !== "tokens";
   }
 
   /** @param {DeckToken} token */

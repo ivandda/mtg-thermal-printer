@@ -774,9 +774,15 @@ select:disabled {
   margin-bottom: 1.5rem;
 }
 
-.deck-group h3 {
-  margin: 0 0 0.25rem;
-  font-size: 1rem;
+/* The switch shows the counts, so an empty status takes no room but still announces. */
+#deck-status:empty {
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+.deck-view {
+  max-width: 22rem;
+  margin-bottom: 1rem;
 }
 
 .deck-group .hint {
