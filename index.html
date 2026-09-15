@@ -14,7 +14,12 @@
   <body data-view="results">
     <header class="bar">
       <a class="name" href="./">MTG Thermal Printer</a>
-      <button id="printer" class="printer" type="button">Connect printer</button>
+      <div class="bar-actions">
+        <button id="open-list" class="button list-button" type="button" aria-haspopup="dialog">
+          Print list <span id="list-count" class="count" hidden></span>
+        </button>
+        <button id="printer" class="printer" type="button">Connect printer</button>
+      </div>
     </header>
 
     <main class="workspace">
@@ -90,7 +95,7 @@
           </label>
           <div class="field copies">
             <label for="copies">Copies</label>
-            <div class="stepper">
+            <div id="copies-stepper" class="stepper">
               <button type="button" data-step="-1" aria-label="One fewer copy">−</button>
               <input id="copies" name="copies" type="number" inputmode="numeric" min="1" max="20" value="1">
               <button type="button" data-step="1" aria-label="One more copy">+</button>
@@ -99,7 +104,10 @@
         </form>
 
         <div class="print-bar">
-          <button id="print" class="print" type="submit" form="controls" disabled>Print label</button>
+          <div class="print-actions">
+            <button id="add-to-list" class="button" type="button" disabled>Add to list</button>
+            <button id="print" class="print" type="submit" form="controls" disabled>Print label</button>
+          </div>
           <p id="print-status" class="print-status" aria-live="polite"></p>
         </div>
       </section>
@@ -112,5 +120,41 @@
         <a href="https://github.com/ivandda/mtg-thermal-printer">Source code</a>
       </p>
     </footer>
+
+    <dialog id="print-list" class="sheet" aria-labelledby="print-list-title">
+      <div class="sheet-content">
+        <header class="sheet-header">
+          <h2 id="print-list-title">Print list</h2>
+          <button id="clear-list" class="button small" type="button">Clear</button>
+          <button id="close-list" class="button small" type="button" autofocus>Close</button>
+        </header>
+        <div class="sheet-body">
+          <p id="list-empty" class="sheet-empty">Nothing here yet. Pick a card and choose Add to list to print several labels together.</p>
+          <ul id="list-items" class="list-items"></ul>
+        </div>
+        <footer class="sheet-footer">
+          <button id="print-all" class="print" type="button" disabled>Print all</button>
+          <p id="list-status" class="print-status" aria-live="polite"></p>
+        </footer>
+      </div>
+    </dialog>
+
+    <template id="list-item">
+      <li class="list-item">
+        <canvas class="list-preview" width="56" height="78" role="img"></canvas>
+        <div class="list-text">
+          <p class="list-name"></p>
+          <p class="list-detail"></p>
+        </div>
+        <div class="list-actions">
+          <div class="stepper">
+            <button type="button" data-step="-1" aria-label="One fewer copy">−</button>
+            <input type="number" inputmode="numeric" min="1" max="20" aria-label="Copies">
+            <button type="button" data-step="1" aria-label="One more copy">+</button>
+          </div>
+          <button class="remove" type="button">Remove</button>
+        </div>
+      </li>
+    </template>
   </body>
 </html>

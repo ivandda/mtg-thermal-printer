@@ -23,6 +23,8 @@
 
 /** @typedef {{ data: ScryfallCard[], total_cards: number, has_more: boolean }} ScryfallList */
 
+/** @typedef {ReturnType<typeof createScryfallClient>} ScryfallClient */
+
 const API_URL = "https://api.scryfall.com";
 const CARD_ENDPOINT = /^\/cards\/(search|named|random|collection)\b/;
 const CARD_INTERVAL_MS = 500;
@@ -136,4 +138,39 @@ export function createScryfallClient({
  */
 export function imageUrl(card, face = 0, size = "large") {
   return (card.card_faces?.[face]?.image_uris ?? card.image_uris)?.[size];
+}
+
+/**
+ * The faces of a double-faced card, each with its own image, or an empty list for other cards.
+ * @param {ScryfallCard} card
+ */
+export function cardFaces(card) {
+  return card.card_faces?.filter((face) => face.image_uris) ?? [];
+}
+
+/**
+ * Only the parts of a card this app uses, e.g. to save it.
+ * @param {ScryfallCard} card
+ * @returns {ScryfallCard}
+ */
+export function pickCard({
+  id,
+  oracle_id,
+  name,
+  set_name,
+  collector_number,
+  border_color,
+  image_uris,
+  card_faces,
+}) {
+  return {
+    id,
+    oracle_id,
+    name,
+    set_name,
+    collector_number,
+    border_color,
+    image_uris,
+    card_faces: card_faces?.map((face) => ({ name: face.name, image_uris: face.image_uris })),
+  };
 }
