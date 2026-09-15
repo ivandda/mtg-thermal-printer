@@ -622,6 +622,17 @@ select:disabled {
   margin: 0;
 }
 
+.link-field {
+  display: block;
+  width: 100%;
+  min-height: 2.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
 .preview-button {
   display: none;
 }

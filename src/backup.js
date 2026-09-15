@@ -72,11 +72,11 @@ export function readBackup(text) {
 }
 
 /**
- * A card from a backup, with only the fields a card has, or undefined when it's damaged.
+ * A card read from a file or a link, with only the fields a card has, or undefined when it's damaged.
  * @param {any} value
  * @returns {Token | undefined}
  */
-function cardOf(value) {
+export function cardOf(value) {
   const texts = ["id", "name", "typeLine", "power", "toughness", "rules"];
   if (!texts.every((field) => typeof value?.[field] === "string")) return undefined;
   if (value.manaCost !== undefined && typeof value.manaCost !== "string") return undefined;
@@ -101,7 +101,7 @@ function artOf(value) {
 }
 
 /** @param {Uint8Array} bytes */
-function toBase64(bytes) {
+export function toBase64(bytes) {
   let binary = "";
   const chunk = 0x8000;
   for (let start = 0; start < bytes.length; start += chunk) {
@@ -111,7 +111,7 @@ function toBase64(bytes) {
 }
 
 /** @param {string} data */
-function fromBase64(data) {
+export function fromBase64(data) {
   const binary = atob(data);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);

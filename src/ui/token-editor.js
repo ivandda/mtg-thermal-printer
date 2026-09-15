@@ -3,11 +3,13 @@
 /** @import { ScryfallCard } from "../scryfall/client.js" */
 /** @import { LabelSize } from "./label-size.js" */
 import { readBackup, writeBackup } from "../backup.js";
+import { cardLink, LINK_PARAM, readCardLink } from "../card-link.js";
 import { customKind, isBlankToken, renderDesign } from "../designs.js";
 import { CENTERED } from "../imaging/arrangement.js";
 import { prepareImage } from "../imaging/images.js";
 import { cardText, imageUrl } from "../scryfall/client.js";
 import { tokenStore } from "../token-store.js";
+import { addressParam, updateAddress } from "./address.js";
 import { drawBitmap, element } from "./dom.js";
 
 const SAVE_DELAY_MS = 400;
@@ -66,6 +68,7 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
     status: element("#token-status", HTMLElement),
     preview: element("#preview-token", HTMLButtonElement),
     actions: element("#editor-actions", HTMLElement),
+    share: element("#share-token", HTMLButtonElement),
     duplicate: element("#duplicate-token", HTMLButtonElement),
     deleteToken: element("#delete-token", HTMLButtonElement),
     deleteConfirm: element("#delete-confirm", HTMLElement),
@@ -325,6 +328,55 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
     ui.name.focus();
   });
 
+  /* Links */
+
+  ui.share.addEventListener("click", async () => {
+    saveNow();
+    const link = cardLink(token, `${location.origin}${location.pathname}`);
+    const leftOut = storedImageOf(token.art)
+      ? " It leaves out the image you added, which stays on this device."
+      : "";
+    try {
+      await navigator.clipboard.writeText(link);
+      ui.status.textContent = `Link copied. Opening it adds a copy of ${titleOf(token)} to My cards.${leftOut}`;
+    } catch {
+      const field = Object.assign(document.createElement("input"), {
+        className: "link-field",
+        value: link,
+        readOnly: true,
+      });
+      field.setAttribute("aria-label", `Link to ${titleOf(token)}`);
+      ui.status.replaceChildren(`Copy this link to share ${titleOf(token)}.${leftOut}`, field);
+      field.select();
+    }
+  });
+
+  /**
+   * Opens a card from a shared link, adding it to My cards unless it's there already.
+   * @param {string} value  The link's parameter.
+   */
+  function openShared(value) {
+    const shared = readCardLink(value);
+    if (!shared) {
+      const message = "This card link is damaged. Ask for the link again.";
+      if (saved.length > 0) {
+        showLibrary(message);
+      } else {
+        edit(blankToken());
+        ui.status.textContent = message;
+      }
+      return;
+    }
+    const existing = saved.find((other) => other.id === shared.id);
+    edit(existing ?? shared);
+    if (existing) {
+      ui.status.textContent = `${titleOf(existing)} is already in My cards.`;
+    } else {
+      save();
+      ui.status.textContent = `Added ${titleOf(shared)} to My cards.`;
+    }
+  }
+
   ui.deleteToken.addEventListener("click", () => {
     showActions(true);
     ui.cancelDelete.focus();
@@ -436,7 +488,11 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
   /** @param {Token[]} tokens */
   const byName = (tokens) => tokens.sort((a, b) => titleOf(a).localeCompare(titleOf(b)));
 
-  /* Start: My cards, or a blank card when there are none. */
+  /* Start: a card from a shared link, My cards, or a blank card when there are none. */
+
+  const linked = addressParam(LINK_PARAM);
+  // Reloading the page shouldn't add the card again.
+  if (linked !== null) updateAddress({ [LINK_PARAM]: undefined });
 
   tokenStore.list().then(
     async (tokens) => {
@@ -445,7 +501,8 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
         ...tokens.filter((stored) => !saved.some((other) => other.id === stored.id)),
         ...saved,
       ]);
-      if (editing) showActions();
+      if (linked !== null) openShared(linked);
+      else if (editing) showActions();
       else if (saved.length > 0) showLibrary();
       else edit(blankToken());
       // Remove images left behind, e.g. by labels removed from the print list after their card was deleted.
@@ -456,7 +513,8 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
     },
     () => {
       canSave = false;
-      if (!editing) edit(blankToken());
+      if (linked !== null) openShared(linked);
+      else if (!editing) edit(blankToken());
     },
   );
 
