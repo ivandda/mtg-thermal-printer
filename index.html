@@ -141,6 +141,19 @@
       <section class="markers" aria-label="Markers">
         <p class="hint">Choose how many of each marker you need. They're printed side by side on as few labels as possible, so one cut separates two markers.</p>
         <div id="marker-groups" class="marker-groups"></div>
+        <section class="marker-group" aria-labelledby="custom-title">
+          <h2 id="custom-title">Your own</h2>
+          <ul id="custom-markers" hidden></ul>
+          <form id="add-marker" class="add-marker" novalidate>
+            <label for="marker-text">New marker</label>
+            <div class="add-marker-row">
+              <input id="marker-text" maxlength="24" autocomplete="off" aria-describedby="marker-text-hint">
+              <button id="add-marker-button" class="button" type="submit">Add</button>
+            </div>
+            <p id="marker-text-hint" class="hint">Printed like a keyword, e.g. +1/+1, Shield or Stunned.</p>
+          </form>
+          <p id="custom-status" class="custom-status" aria-live="polite"></p>
+        </section>
         <div class="markers-footer">
           <button id="preview-markers" class="print preview-button" type="button">Preview and print</button>
           <button id="clear-markers" class="text-button" type="button" hidden>Clear all</button>

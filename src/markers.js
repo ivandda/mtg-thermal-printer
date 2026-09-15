@@ -8,6 +8,14 @@
  */
 
 const MAX_EACH = 20;
+/** How many markers can be typed in, and how long each can be. */
+export const MAX_CUSTOM = 20;
+export const MAX_CUSTOM_LENGTH = 24;
+
+/**
+ * What to print from the Markers tab: how many of each marker, by ID, and the markers typed in.
+ * @typedef {{ counts: Record<string, number>, custom: Marker[] }} MarkerSelection
+ */
 
 /** @type {Marker[]} */
 export const MARKERS = [
@@ -69,16 +77,53 @@ export const MARKER_GROUPS = [
 ];
 
 /**
+ * The catalogue followed by the markers typed in.
+ * @param {Marker[]} custom
+ */
+export const allMarkers = (custom) => [...MARKERS, ...custom];
+
+/**
+ * A marker typed in, printed like a keyword marker.
+ * @param {string} name
+ * @returns {Marker}
+ */
+export const customMarker = (name) => ({
+  id: `custom-${crypto.randomUUID()}`,
+  name: name.trim().slice(0, MAX_CUSTOM_LENGTH),
+  kind: "keyword",
+});
+
+/**
+ * Markers typed in, from saved data: each with an ID and a name.
+ * @param {unknown} value
+ * @returns {Marker[]}
+ */
+export function customMarkers(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (marker) =>
+        typeof marker?.id === "string" &&
+        marker.id.startsWith("custom-") &&
+        typeof marker.name === "string" &&
+        marker.name.trim(),
+    )
+    .slice(0, MAX_CUSTOM)
+    .map(({ id, name }) => ({ id, name: name.trim().slice(0, MAX_CUSTOM_LENGTH), kind: "keyword" }));
+}
+
+/**
  * How many of each marker to print, from saved or edited data: known markers only, each a whole
  * number up to 20. Markers with none are left out.
  * @param {unknown} value
+ * @param {Marker[]} [custom]  Markers typed in.
  * @returns {Record<string, number>}
  */
-export function markerCounts(value) {
+export function markerCounts(value, custom = []) {
   /** @type {Record<string, number>} */
   const counts = {};
   if (typeof value !== "object" || value === null) return counts;
-  for (const { id } of MARKERS) {
+  for (const { id } of allMarkers(custom)) {
     const count = Math.min(
       Math.round(Number(/** @type {Record<string, unknown>} */ (value)[id])) || 0,
       MAX_EACH,

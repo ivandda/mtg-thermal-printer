@@ -66,3 +66,13 @@ test("markers shrink to fit a narrow label and stay inside a round one", () => {
     }
   }
 });
+
+test("markers typed in print in the keyword rows, after the catalogue's", () => {
+  const custom = [{ id: "custom-a", name: "+1/+1", kind: /** @type {const} */ ("keyword") }];
+  const [page] = layoutMarkers({ "custom-a": 1, flying: 1 }, media("62"), custom);
+  assert.deepEqual(
+    page.markers.map(({ marker }) => marker.name),
+    ["Flying", "+1/+1"],
+  );
+  assert.equal(page.markers[0].y, page.markers[1].y);
+});
