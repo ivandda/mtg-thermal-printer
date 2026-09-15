@@ -26,3 +26,23 @@ export function loadImage(url) {
   if (cache.size > CACHE_SIZE) cache.delete(oldest);
   return image;
 }
+
+const STORED_IMAGE_SIZE = 1600;
+
+/**
+ * Decodes an image the user added and shrinks it to at most 1600 pixels on its longer side: more
+ * than a label needs, even zoomed in, and small enough to save in the browser.
+ * @param {Blob} file
+ * @returns {Promise<Blob>}
+ */
+export async function prepareImage(file) {
+  const image = await createImageBitmap(file);
+  const scale = Math.min(1, STORED_IMAGE_SIZE / Math.max(image.width, image.height));
+  const canvas = new OffscreenCanvas(Math.round(image.width * scale), Math.round(image.height * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas is not available");
+  context.imageSmoothingQuality = "high";
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  image.close();
+  return canvas.convertToBlob({ type: "image/webp", quality: 0.92 });
+}

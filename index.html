@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="src/app.css">
     <script type="module" src="src/app.js"></script>
   </head>
-  <body data-view="results">
+  <body data-view="results" data-mode="find">
     <header class="bar">
       <a class="name" href="./">MTG Thermal Printer</a>
       <div class="bar-actions">
@@ -23,6 +23,13 @@
     </header>
 
     <main class="workspace">
+      <div class="choose">
+      <fieldset class="modes">
+        <legend class="visually-hidden">What to print</legend>
+        <label><input type="radio" name="mode" value="find" checked><span class="tab">Find cards</span></label>
+        <label><input type="radio" name="mode" value="create"><span class="tab">Create a token</span></label>
+      </fieldset>
+
       <section class="browse" aria-label="Find a card">
         <search>
           <form id="search" class="search">
@@ -52,6 +59,70 @@
         <button id="more" class="button more" type="button" hidden>Show more</button>
       </section>
 
+      <section class="create" aria-label="Create a token">
+        <div id="my-tokens" class="my-tokens" hidden>
+          <div class="section-head">
+            <h2>My tokens</h2>
+            <button id="new-token" class="button small" type="button">New token</button>
+          </div>
+          <ul id="token-list" class="token-list"></ul>
+        </div>
+
+        <form id="token-form" class="token-form" novalidate>
+          <div class="token-field">
+            <label for="token-name">Name</label>
+            <input id="token-name" name="name" autocomplete="off">
+          </div>
+          <div class="token-field">
+            <label for="token-type">Type</label>
+            <input id="token-type" name="type" autocomplete="off" placeholder="Token Creature — Goblin">
+          </div>
+          <fieldset class="token-field">
+            <legend>Power and toughness</legend>
+            <div class="stats-inputs">
+              <input id="token-power" name="power" autocomplete="off" aria-label="Power">
+              <span aria-hidden="true">/</span>
+              <input id="token-toughness" name="toughness" autocomplete="off" aria-label="Toughness">
+            </div>
+          </fieldset>
+          <div class="token-field">
+            <label for="token-rules">Rules text</label>
+            <textarea id="token-rules" name="rules" rows="4" aria-describedby="rules-hint"></textarea>
+            <p id="rules-hint" class="hint">Write symbols in braces, like {T} or {R}.</p>
+          </div>
+          <fieldset class="token-field">
+            <legend>Image</legend>
+            <div id="image-drop" class="image-drop">
+              <input id="token-image" type="file" accept="image/*" hidden>
+              <p id="image-empty">
+                Drop or paste an image here, or
+                <button id="choose-image" class="text-button" type="button">choose a file</button>.
+              </p>
+              <div id="image-chosen" class="image-chosen" hidden>
+                <p>Move and zoom the image on the label preview.</p>
+                <div class="image-buttons">
+                  <button id="replace-image" class="button small" type="button">Replace image</button>
+                  <button id="remove-image" class="button small" type="button">Remove image</button>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <p id="token-status" class="token-status" aria-live="polite"></p>
+          <button id="preview-token" class="print preview-token" type="button">Preview and print</button>
+          <div class="token-footer">
+            <p class="hint">Tokens are saved in this browser. Images never leave your device.</p>
+            <button id="delete-token" class="text-button" type="button" hidden>Delete token</button>
+            <div id="delete-confirm" class="delete-confirm" hidden>
+              <span>Delete this token?</span>
+              <button id="confirm-delete" class="button small" type="button">Delete</button>
+              <button id="cancel-delete" class="button small" type="button">Keep</button>
+            </div>
+          </div>
+        </form>
+      </section>
+      </div>
+
       <section class="label-panel" aria-label="Print">
         <button id="back" class="button back" type="button">Back to results</button>
 
@@ -64,11 +135,15 @@
             </div>
           </div>
           <div class="dimension length"><span id="label-length">100 mm</span></div>
+          <figcaption id="arrange-hint" class="arrange-hint" hidden>Drag the image to move it. Pinch or scroll to zoom.</figcaption>
         </figure>
 
         <div id="card-heading" class="card-heading" hidden>
-          <h2 id="card-name" tabindex="-1">Pick a card</h2>
-          <p id="card-set"></p>
+          <div>
+            <h2 id="card-name" tabindex="-1">Pick a card</h2>
+            <p id="card-set"></p>
+          </div>
+          <button id="customize" class="button small" type="button">Customize</button>
         </div>
         <fieldset id="printings" class="printings" aria-label="Printings"></fieldset>
 
@@ -81,13 +156,26 @@
             <legend>Side</legend>
             <div id="faces" class="segmented"></div>
           </fieldset>
-          <fieldset class="field">
+          <fieldset id="style-field" class="field">
             <legend>Style</legend>
             <div class="segmented">
               <label><input type="radio" name="style" value="image" checked><span>Card image</span></label>
               <label><input type="radio" name="style" value="text"><span>Text</span></label>
             </div>
           </fieldset>
+          <div id="arrange-fields" class="arrange-fields" hidden>
+            <fieldset class="field">
+              <legend>Image</legend>
+              <div class="segmented">
+                <label><input type="radio" name="fit" value="fill" checked><span>Fill</span></label>
+                <label><input type="radio" name="fit" value="fit"><span>Fit</span></label>
+              </div>
+            </fieldset>
+            <div class="field">
+              <label for="zoom">Zoom</label>
+              <input id="zoom" name="zoom" type="range" min="1" max="4" step="0.01" value="1">
+            </div>
+          </div>
           <fieldset id="darkness-field" class="field">
             <legend>Darkness</legend>
             <div class="segmented">

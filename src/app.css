@@ -52,7 +52,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -375,6 +376,209 @@ select:disabled {
   margin: 2rem auto 0;
 }
 
+/* Find cards or create a token */
+
+.modes {
+  display: flex;
+  gap: 1.75rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.modes label {
+  position: relative;
+}
+
+.modes input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.tab {
+  display: block;
+  margin-bottom: -1px;
+  padding: 0.5rem 0 0.625rem;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.modes input:checked + .tab {
+  border-bottom-color: var(--text);
+  color: var(--text);
+}
+
+.modes input:focus-visible + .tab {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* Create a token */
+
+.create {
+  max-width: 34rem;
+}
+
+body[data-mode="create"] .browse,
+body:not([data-mode="create"]) .create {
+  display: none;
+}
+
+.my-tokens {
+  margin-bottom: 1.75rem;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-head h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.token-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.token-list [aria-pressed="true"] {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--desk);
+}
+
+.token-form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.token-field {
+  display: grid;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.token-field > label,
+.token-field > legend {
+  padding: 0;
+  font-weight: 700;
+}
+
+.token-field input,
+.token-field textarea {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.token-field textarea {
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.stats-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stats-inputs input {
+  width: 4.5rem;
+  text-align: center;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.image-drop {
+  padding: 1rem;
+  border: 1px dashed var(--muted);
+  border-radius: var(--radius);
+}
+
+.image-drop.dragging {
+  border-style: solid;
+  border-color: var(--text);
+  background: var(--surface);
+}
+
+.image-drop p {
+  margin: 0;
+}
+
+.image-chosen {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.image-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.text-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.token-status:empty {
+  display: none;
+}
+
+.token-status {
+  margin: 0;
+}
+
+.preview-token {
+  display: none;
+}
+
+.token-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.token-footer .text-button {
+  min-height: 2.5rem;
+  color: var(--muted);
+}
+
+.delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* Label panel */
 
 .label-panel {
@@ -454,6 +658,23 @@ select:disabled {
   display: none;
 }
 
+.arrange-hint {
+  grid-column: 1;
+  grid-row: 3;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.label.arrangeable canvas {
+  cursor: grab;
+  touch-action: none;
+}
+
+.label.arrangeable canvas:active {
+  cursor: grabbing;
+}
+
 /* Dimension lines, drawn like on a technical drawing: end ticks, a line, the measurement. */
 
 .dimension {
@@ -503,6 +724,13 @@ select:disabled {
   to {
     clip-path: inset(0);
   }
+}
+
+.card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .card-heading h2 {
@@ -555,9 +783,16 @@ select:disabled {
 
 /* Print controls */
 
-.controls {
+.controls,
+.arrange-fields {
   display: grid;
   gap: 0.5rem;
+}
+
+.field input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--text);
 }
 
 .field {
@@ -840,13 +1075,17 @@ body:has(.sheet[open]) {
   }
 
   body:not([data-view="label"]) .label-panel,
-  body[data-view="label"] .browse,
+  body[data-view="label"] .choose,
   body[data-view="label"] .credits {
     display: none;
   }
 
-  .back {
+  .back,
+  .preview-token {
     display: block;
+  }
+
+  .back {
     justify-self: start;
   }
 
