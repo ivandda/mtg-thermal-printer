@@ -1,12 +1,18 @@
 /** @import { Media } from "../types.js" */
+/** @import { RasterModel } from "./raster.js" */
 
 /**
- * @typedef {Media & { offsetRight: number, feedMargin: number }} BrotherMedia
+ * @typedef {Media & { offsetRight: number, feedMargin: number, models?: string[] }} BrotherMedia
  *   `offsetRight`: dots between the printable area and the right end of the print head.
  *   `feedMargin`: extra feed in dots, needed by continuous rolls and some small labels.
+ *   `models`: the only printers that take the label, if not every QL.
  */
 
 export const MEDIA_TYPE = { continuous: 0x0a, dieCut: 0x0b };
+
+/** Printers with the wide print head. brother_ql's "QL-1100NWB" is taken to be the QL-1110NWB. */
+const WIDE = ["QL-1050", "QL-1060N", "QL-1100", "QL-1110NWB", "QL-1115NWB"];
+const WIDEST = ["QL-1100", "QL-1110NWB"];
 
 /**
  * @param {string} id
@@ -14,17 +20,10 @@ export const MEDIA_TYPE = { continuous: 0x0a, dieCut: 0x0b };
  * @param {[number, number]} sizeMm  Width and length.
  * @param {[number, number]} printable  Printable width and height in dots.
  * @param {number} offsetRight
- * @param {number} [feedMargin]
+ * @param {{ feedMargin?: number, models?: string[] }} [options]
  * @returns {BrotherMedia}
  */
-function label(
-  id,
-  kind,
-  [widthMm, lengthMm],
-  [printableWidth, printableHeight],
-  offsetRight,
-  feedMargin = 0,
-) {
+function label(id, kind, [widthMm, lengthMm], [printableWidth, printableHeight], offsetRight, options = {}) {
   const names = {
     continuous: `${widthMm} mm continuous`,
     "die-cut": `${widthMm} × ${lengthMm} mm die-cut`,
@@ -40,19 +39,22 @@ function label(
     shape: kind === "round" ? "round" : "rectangle",
     dpi: 300,
     offsetRight,
-    feedMargin,
+    feedMargin: options.feedMargin ?? 0,
+    models: options.models,
   };
 }
 
-/** Labels the QL-700 takes. Dimensions from brother_ql's label table. */
+/** Every Brother QL label. Dimensions from brother_ql's label table. */
 export const MEDIA = [
-  label("12", "continuous", [12, 0], [106, 0], 29, 35),
-  label("18", "continuous", [18, 0], [234, 0], 171, 14),
-  label("29", "continuous", [29, 0], [306, 0], 6, 35),
-  label("38", "continuous", [38, 0], [413, 0], 12, 35),
-  label("50", "continuous", [50, 0], [554, 0], 12, 35),
-  label("54", "continuous", [54, 0], [590, 0], 0, 35),
-  label("62", "continuous", [62, 0], [696, 0], 12, 35),
+  label("12", "continuous", [12, 0], [106, 0], 29, { feedMargin: 35 }),
+  label("18", "continuous", [18, 0], [234, 0], 171, { feedMargin: 14 }),
+  label("29", "continuous", [29, 0], [306, 0], 6, { feedMargin: 35 }),
+  label("38", "continuous", [38, 0], [413, 0], 12, { feedMargin: 35 }),
+  label("50", "continuous", [50, 0], [554, 0], 12, { feedMargin: 35 }),
+  label("54", "continuous", [54, 0], [590, 0], 0, { feedMargin: 35 }),
+  label("62", "continuous", [62, 0], [696, 0], 12, { feedMargin: 35 }),
+  label("102", "continuous", [102, 0], [1164, 0], 12, { feedMargin: 35, models: WIDE }),
+  label("103", "continuous", [104, 0], [1200, 0], 12, { feedMargin: 35, models: WIDEST }),
   label("17x54", "die-cut", [17, 54], [165, 566], 0),
   label("17x87", "die-cut", [17, 87], [165, 956], 0),
   label("23x23", "die-cut", [23, 23], [202, 202], 42),
@@ -65,16 +67,33 @@ export const MEDIA = [
   label("60x86", "die-cut", [60, 87], [672, 954], 18),
   label("62x29", "die-cut", [62, 29], [696, 271], 12),
   label("62x100", "die-cut", [62, 100], [696, 1109], 12),
-  label("d12", "round", [12, 12], [94, 94], 113, 35),
+  label("102x51", "die-cut", [102, 51], [1164, 526], 12, { models: WIDE }),
+  label("102x152", "die-cut", [102, 153], [1164, 1660], 12, { models: WIDE }),
+  label("103x164", "die-cut", [104, 164], [1200, 1822], 12, { models: WIDEST }),
+  label("d12", "round", [12, 12], [94, 94], 113, { feedMargin: 35 }),
   label("d24", "round", [24, 24], [236, 236], 42),
   label("d58", "round", [58, 58], [618, 618], 51),
 ];
 
 /**
+ * The labels a printer model takes. Like brother_ql, it leaves out labels shorter than the
+ * shortest page the model prints.
+ * @param {RasterModel} model
+ */
+export function mediaFor(model) {
+  return MEDIA.filter(
+    (media) =>
+      (!media.models || media.models.includes(model.name)) &&
+      (!media.printableHeight || media.printableHeight >= model.minRows),
+  );
+}
+
+/**
  * Finds the label described by a status reply.
  * @param {{ mediaType: number, widthMm: number, lengthMm: number }} status
+ * @param {BrotherMedia[]} [media]  The labels to look in.
  */
-export function findMedia({ mediaType, widthMm, lengthMm }) {
+export function findMedia({ mediaType, widthMm, lengthMm }, media = MEDIA) {
   const length = mediaType === MEDIA_TYPE.continuous ? 0 : lengthMm;
-  return MEDIA.find((media) => media.widthMm === widthMm && media.lengthMm === length) ?? null;
+  return media.find((label) => label.widthMm === widthMm && label.lengthMm === length) ?? null;
 }

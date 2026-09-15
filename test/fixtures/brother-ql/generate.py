@@ -10,7 +10,7 @@ from brother_ql.conversion import convert
 from brother_ql.raster import BrotherQLRaster
 from PIL import Image
 
-logging.disable(logging.WARNING)  # brother_ql warns about a mode command the QL-700 doesn't use
+logging.disable(logging.WARNING)  # brother_ql warns about commands a model doesn't use
 
 HERE = Path(__file__).parent
 
@@ -27,12 +27,18 @@ def pattern(width, height, shift=0):
 
 
 JOBS = {
-    "62x29.bin": ("62x29", [pattern(696, 271)]),
-    "62x29-two-pages.bin": ("62x29", [pattern(696, 271), pattern(696, 271, shift=5)]),
-    "62-continuous.bin": ("62", [pattern(696, 150)]),
+    "62x29.bin": ("QL-700", "62x29", [pattern(696, 271)]),
+    "62x29-two-pages.bin": ("QL-700", "62x29", [pattern(696, 271), pattern(696, 271, shift=5)]),
+    "62-continuous.bin": ("QL-700", "62", [pattern(696, 150)]),
+    # Switches to raster mode and flushes 400 bytes.
+    "ql-820nwb-62x29.bin": ("QL-820NWB", "62x29", [pattern(696, 271)]),
+    # Has no cutter.
+    "ql-500-62x100.bin": ("QL-500", "62x100", [pattern(696, 1109)]),
+    # Wide print head with an extra offset.
+    "ql-1100-102-continuous.bin": ("QL-1100", "102", [pattern(1164, 301)]),
 }
 
-for filename, (label, pages) in JOBS.items():
-    data = convert(BrotherQLRaster("QL-700"), pages, label, rotate="0", threshold=70, cut=True)
+for filename, (model, label, pages) in JOBS.items():
+    data = convert(BrotherQLRaster(model), pages, label, rotate="0", threshold=70, cut=True)
     (HERE / filename).write_bytes(data)
     print(f"{filename}: {len(data)} bytes")

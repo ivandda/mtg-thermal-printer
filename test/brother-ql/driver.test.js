@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { brotherQl700, QL_700 } from "../../src/printers/brother-ql/driver.js";
+import { brotherQl } from "../../src/printers/brother-ql/driver.js";
 import { MEDIA } from "../../src/printers/brother-ql/media.js";
+import { modelNamed } from "../../src/printers/brother-ql/models.js";
+
+const QL_700 = modelNamed("QL-700");
 
 /** @param {string} hex */
 const bytes = (hex) => Uint8Array.from(hex.match(/../g) ?? [], (byte) => Number.parseInt(byte, 16));
@@ -26,7 +29,7 @@ test("a card too short for a continuous roll is centered on a label of the minim
   };
   const page = { width: 106, height: 148, pixels: new Uint8Array(106 * 148).fill(1) };
 
-  await brotherQl700.print(transport, [page], media);
+  await brotherQl(QL_700).print(transport, [page], media);
 
   // The job ends with the raster lines, each 3 command bytes and 90 data bytes, then the print command.
   const [job] = written;

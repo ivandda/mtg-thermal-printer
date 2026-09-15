@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
-import { QL_700 } from "../../src/printers/brother-ql/driver.js";
 import { MEDIA } from "../../src/printers/brother-ql/media.js";
+import { modelNamed } from "../../src/printers/brother-ql/models.js";
 import { encodeJob } from "../../src/printers/brother-ql/raster.js";
 
 /**
@@ -43,6 +43,8 @@ function assertSameBytes(actual, expected) {
   assert.equal(actual.length, expected.length);
 }
 
+const QL_700 = modelNamed("QL-700");
+
 test("die-cut label matches brother_ql", async () => {
   const job = encodeJob([pattern(696, 271)], media("62x29"), QL_700);
   assertSameBytes(job, await fixture("62x29.bin"));
@@ -58,12 +60,28 @@ test("continuous roll matches brother_ql", async () => {
   assertSameBytes(job, await fixture("62-continuous.bin"));
 });
 
+test("a printer that switches to raster mode matches brother_ql", async () => {
+  const job = encodeJob([pattern(696, 271)], media("62x29"), modelNamed("QL-820NWB"));
+  assertSameBytes(job, await fixture("ql-820nwb-62x29.bin"));
+});
+
+test("a printer without a cutter matches brother_ql", async () => {
+  const job = encodeJob([pattern(696, 1109)], media("62x100"), modelNamed("QL-500"));
+  assertSameBytes(job, await fixture("ql-500-62x100.bin"));
+});
+
+test("a wide print head matches brother_ql", async () => {
+  const job = encodeJob([pattern(1164, 301)], media("102"), modelNamed("QL-1100"));
+  assertSameBytes(job, await fixture("ql-1100-102-continuous.bin"));
+});
+
 test("rejects pages that don't fit the label", () => {
   assert.throws(() => encodeJob([pattern(600, 271)], media("62x29"), QL_700), RangeError);
   assert.throws(() => encodeJob([pattern(696, 300)], media("62x29"), QL_700), RangeError);
   assert.throws(() => encodeJob([pattern(696, 100)], media("62"), QL_700), RangeError);
 });
 
-test("small die-cut labels may be shorter than the continuous-roll minimum", () => {
-  assert.doesNotThrow(() => encodeJob([pattern(94, 94)], media("d12"), QL_700));
+test("rejects labels shorter than the printer prints", () => {
+  assert.throws(() => encodeJob([pattern(94, 94)], media("d12"), QL_700), RangeError);
+  assert.throws(() => encodeJob([pattern(696, 271)], media("62x29"), modelNamed("QL-500")), RangeError);
 });
