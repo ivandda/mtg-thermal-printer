@@ -51,7 +51,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
   color: inherit;
 }
@@ -158,6 +159,33 @@ canvas {
   position: relative;
   outline: 2px solid var(--text);
   outline-offset: 2px;
+}
+
+.checkbox {
+  display: flex;
+  gap: 0.625rem;
+  align-items: center;
+  min-height: 2.5rem;
+  cursor: pointer;
+}
+
+.checkbox input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--text);
+}
+
+select {
+  min-height: 2.5rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+select:disabled {
+  color: var(--muted);
 }
 
 /* Header */
@@ -317,7 +345,7 @@ canvas {
   position: sticky;
   top: 1.5rem;
   display: grid;
-  gap: 1rem;
+  gap: 0.875rem;
 }
 
 .back {
@@ -330,7 +358,7 @@ canvas {
   gap: 0.375rem 0.625rem;
   justify-self: center;
   /* Shrinks on short screens so the Print button stays in view. */
-  width: clamp(11rem, (100dvh - 29rem) / 1.5, 15rem);
+  width: clamp(11rem, (100dvh - 35rem) / 1.5, 15rem);
   margin: 0;
 }
 
@@ -460,7 +488,7 @@ canvas {
 
 .printings button {
   flex: none;
-  width: 3.75rem;
+  width: 3rem;
   padding: 0;
   border: 0;
   background: none;
@@ -484,7 +512,7 @@ canvas {
 
 .controls {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .field {
@@ -504,7 +532,7 @@ canvas {
   font-weight: 700;
 }
 
-.copies label {
+.field > label {
   font-weight: 700;
 }
 

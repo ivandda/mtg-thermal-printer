@@ -16,10 +16,14 @@ export class PrinterConnection extends EventTarget {
   /** @type {ConnectionState} */
   state = { kind: "disconnected" };
 
-  /** @type {{ device: USBDevice, driver: PrinterDriver, transport: Transport } | undefined} */
-  #printer;
+  /** The printer in use, even if opening it failed. @type {USBDevice | undefined} */
+  #device;
+  /** @type {{ driver: PrinterDriver, transport: Transport } | undefined} */
+  #session;
+  /** An attempt to open a printer, shared by requests that overlap it. @type {Promise<void> | undefined} */
+  #connecting;
   #usb;
-  #open;
+  #openTransport;
 
   /**
    * @param {object} [dependencies]  Replaceable in tests.
@@ -29,22 +33,23 @@ export class PrinterConnection extends EventTarget {
   constructor({ usb = "usb" in navigator ? navigator.usb : undefined, open = openUsbPrinter } = {}) {
     super();
     this.#usb = usb;
-    this.#open = open;
+    this.#openTransport = open;
     if (!usb) {
       this.state = { kind: "unsupported" };
       return;
     }
     usb.addEventListener("connect", () => this.restore());
     usb.addEventListener("disconnect", (event) => {
-      if (event.device !== this.#printer?.device) return;
-      this.#printer = undefined;
+      if (event.device !== this.#device) return;
+      this.#device = undefined;
+      this.#session = undefined;
       this.#setState({ kind: "disconnected" });
     });
   }
 
   /** Connects to a printer the user already allowed on this site, without asking again. */
   async restore() {
-    if (!this.#usb || this.#printer) return;
+    if (!this.#usb || this.#device) return;
     const device = (await this.#usb.getDevices()).find((candidate) => driverFor(candidate));
     if (device) await this.#connect(device);
   }
@@ -61,15 +66,17 @@ export class PrinterConnection extends EventTarget {
     }
   }
 
-  /** Reads the printer's status again, e.g. after its cover was closed. */
-  async refresh() {
-    await this.#readStatus();
+  /** Tries again after a problem: reads the status again, or reopens a printer that failed to open. */
+  async retry() {
+    if (this.#session) await this.#readStatus();
+    else if (this.#device) await this.#connect(this.#device);
+    else await this.choose();
   }
 
   /** @param {Bitmap[]} pages */
   async print(pages) {
-    if (!this.#printer || this.state.kind !== "ready") throw new Error("Connect a printer first");
-    const { driver, transport } = this.#printer;
+    if (!this.#session || this.state.kind !== "ready") throw new Error("Connect a printer first");
+    const { driver, transport } = this.#session;
     try {
       await driver.print(transport, pages, this.state.media);
     } catch (error) {
@@ -79,24 +86,33 @@ export class PrinterConnection extends EventTarget {
   }
 
   /** @param {USBDevice} device */
-  async #connect(device) {
+  #connect(device) {
+    this.#connecting ??= this.#open(device).finally(() => {
+      this.#connecting = undefined;
+    });
+    return this.#connecting;
+  }
+
+  /** @param {USBDevice} device */
+  async #open(device) {
     const driver = driverFor(device);
     if (!driver) return;
-    await this.#printer?.transport.close().catch(() => {}); // the previous printer may already be gone
-    this.#printer = undefined;
+    await this.#session?.transport.close().catch(() => {}); // the previous printer may already be gone
+    this.#device = device;
+    this.#session = undefined;
     this.#setState({ kind: "connecting" });
     try {
-      this.#printer = { device, driver, transport: await this.#open(device) };
+      this.#session = { driver, transport: await this.#openTransport(device) };
     } catch (error) {
-      this.#setState({ kind: "error", printer: driver.name, message: messageOf(error) });
+      this.#setState({ kind: "error", printer: driver.name, message: openFailure(error) });
       return;
     }
     await this.#readStatus();
   }
 
   async #readStatus() {
-    if (!this.#printer) return;
-    const { driver, transport } = this.#printer;
+    if (!this.#session) return;
+    const { driver, transport } = this.#session;
     try {
       const { media, errors } = await driver.readStatus(transport);
       if (errors.length > 0) {
@@ -116,6 +132,18 @@ export class PrinterConnection extends EventTarget {
     this.state = state;
     this.dispatchEvent(new Event("change"));
   }
+}
+
+/**
+ * Explains why a printer couldn't be opened. Browsers report a printer that another tab or program
+ * is already using as a failure to claim its USB interface.
+ * @param {unknown} error
+ */
+function openFailure(error) {
+  if (error instanceof DOMException && /claim/i.test(error.message)) {
+    return "In use by another tab or app. Close it, then try again.";
+  }
+  return messageOf(error);
 }
 
 /** @param {unknown} error */

@@ -9,6 +9,8 @@ Search Magic: The Gathering cards and tokens and print them as stickers on a the
 - Search tokens or every paper card. [Scryfall search syntax](https://scryfall.com/docs/syntax) works too, e.g. `c:g power>=4`.
 - Pick the printing you like and, for double-faced tokens, the side.
 - Preview the label exactly as it will print: the card is converted to black and white the way a thermal print head draws it, with a darkness setting.
+- Pick the label size, or let a connected printer report the roll it has loaded.
+- Optionally leave out the black border, so the art and text print larger.
 - Print one or several copies; the printer cuts after each label.
 
 On 62 × 100 mm die-cut labels (Brother DK-11202) a card prints at 59 × 82 mm, about 94% of a real card.

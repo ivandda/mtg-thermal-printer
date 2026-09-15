@@ -18,3 +18,7 @@ test("a card fills the label width when the label is long enough", () => {
 test("a card fits the label height on short labels", () => {
   assert.deepEqual(cardSize(media("62x29")), { width: 194, height: 271 });
 });
+
+test("a card without its border keeps the cropped image's proportions", () => {
+  assert.deepEqual(cardSize(media("62x100"), 1.3), { width: 696, height: 905 });
+});

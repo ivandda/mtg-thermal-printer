@@ -1,7 +1,7 @@
 /** @import { Bitmap, Media } from "./printers/types.js" */
 /** @import { ScryfallCard } from "./scryfall/client.js" */
 import { shrinkBitmap } from "./imaging/bitmap.js";
-import { renderCard, TONES } from "./imaging/card.js";
+import { cardSize, renderCard, TONES } from "./imaging/card.js";
 import { PrinterConnection } from "./printers/connection.js";
 import { drivers } from "./printers/index.js";
 import { createScryfallClient, imageUrl, ScryfallError } from "./scryfall/client.js";
@@ -9,8 +9,9 @@ import { createScryfallClient, imageUrl, ScryfallError } from "./scryfall/client
 const SEARCH_DELAY_MS = 300;
 const MAX_COPIES = 20;
 const IMAGE_CACHE_SIZE = 12;
-// Until a printer reports its loaded roll, previews use the QL-700's 62 × 100 mm labels.
-const DEFAULT_MEDIA = /** @type {Media} */ (drivers[0].media.find(({ id }) => id === "62x100"));
+const SETTINGS_KEY = "settings";
+const LABELS = drivers[0].media;
+const DEFAULT_MEDIA = /** @type {Media} */ (LABELS.find(({ id }) => id === "62x100"));
 
 /**
  * @template {Element} T
@@ -42,8 +43,10 @@ const ui = {
   cardSet: element("#card-set", HTMLElement),
   printings: element("#printings", HTMLElement),
   controls: element("#controls", HTMLFormElement),
+  media: element("#media", HTMLSelectElement),
   facesField: element("#faces-field", HTMLFieldSetElement),
   faces: element("#faces", HTMLElement),
+  cropBorder: element("#crop-border", HTMLInputElement),
   copies: element("#copies", HTMLInputElement),
   print: element("#print", HTMLButtonElement),
   printStatus: element("#print-status", HTMLElement),
@@ -280,7 +283,7 @@ ui.back.addEventListener("click", () => {
   document.body.dataset.view = "results";
 });
 
-/* Preview */
+/* Label settings and preview */
 
 ui.controls.addEventListener("change", (event) => {
   if (event.target === ui.copies) {
@@ -289,14 +292,49 @@ ui.controls.addEventListener("change", (event) => {
   }
   const face = new FormData(ui.controls).get("face");
   if (face !== null) state.face = Number(face);
+  saveSettings();
   showCardName();
+  showLabelSize(currentMedia());
   updatePreview();
 });
 
 const darkness = () =>
   /** @type {keyof typeof TONES} */ (new FormData(ui.controls).get("darkness") ?? "normal");
 
-const currentMedia = () => (printer.state.kind === "ready" ? printer.state.media : DEFAULT_MEDIA);
+/** The printer's loaded roll when one is connected, otherwise the size picked in the menu. */
+const currentMedia = () =>
+  printer.state.kind === "ready"
+    ? printer.state.media
+    : (LABELS.find(({ id }) => id === ui.media.value) ?? DEFAULT_MEDIA);
+
+/** Label size, darkness and border, remembered in this browser. */
+function loadSettings() {
+  const defaults = { media: DEFAULT_MEDIA.id, darkness: "normal", cropBorder: false };
+  try {
+    return { ...defaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}") };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveSettings() {
+  const settings = { media: ui.media.value, darkness: darkness(), cropBorder: ui.cropBorder.checked };
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // Storage can be unavailable, e.g. in private windows; the choices then last for this visit.
+  }
+}
+
+/**
+ * @param {string} label
+ * @param {Media[]} media
+ */
+function optionGroup(label, media) {
+  const group = Object.assign(document.createElement("optgroup"), { label });
+  group.append(...media.map(({ id, name }) => new Option(name, id)));
+  return group;
+}
 
 async function updatePreview() {
   const card = state.card;
@@ -313,8 +351,7 @@ async function updatePreview() {
     if (!url) throw new Error(`Scryfall has no image of ${card.name}.`);
     const image = await loadImage(url);
     if (id !== renderId) return;
-    const page = renderCard(image, media, TONES[darkness()]);
-    state.page = page;
+    state.page = renderCard(image, media, { tone: TONES[darkness()], cropBorder: ui.cropBorder.checked });
     drawPreview();
     ui.label.dataset.state = "ready";
   } catch (error) {
@@ -344,11 +381,18 @@ function drawPreview() {
 
 new ResizeObserver(drawPreview).observe(ui.preview);
 
-/** @param {Media} media */
+/**
+ * Labels the dimension lines and gives the blank label the loaded roll's shape.
+ * @param {Media} media
+ */
 function showLabelSize(media) {
   ui.labelWidth.textContent = `${media.widthMm} mm`;
   ui.labelLength.textContent = media.lengthMm ? `${media.lengthMm} mm` : "continuous";
   ui.label.classList.toggle("continuous", !media.lengthMm);
+  if (!state.page) {
+    ui.preview.width = media.printableWidth;
+    ui.preview.height = media.printableHeight || cardSize(media).height;
+  }
 }
 
 /** @param {string} url */
@@ -398,7 +442,7 @@ async function printLabels() {
   if (!state.page || state.printing) return;
   ui.printStatus.textContent = "";
   if (printer.state.kind === "disconnected") await printer.choose();
-  else if (printer.state.kind === "error") await printer.refresh();
+  else if (printer.state.kind === "error") await printer.retry();
   if (printer.state.kind !== "ready") return;
 
   if (!state.page || !fits(state.page, printer.state.media)) await updatePreview();
@@ -436,12 +480,16 @@ function updatePrintButton() {
 
 printer.addEventListener("change", () => {
   showPrinter();
+  // The printer can only print on the roll it has loaded, so its roll replaces the menu choice.
+  ui.media.disabled = printer.state.kind === "ready";
+  if (printer.state.kind === "ready") ui.media.value = printer.state.media.id;
+  showLabelSize(currentMedia());
   if (state.page && !fits(state.page, currentMedia())) updatePreview();
   else updatePrintButton();
 });
 
 ui.printer.addEventListener("click", () =>
-  printer.state.kind === "disconnected" ? printer.choose() : printer.refresh(),
+  printer.state.kind === "disconnected" ? printer.choose() : printer.retry(),
 );
 
 function showPrinter() {
@@ -484,11 +532,30 @@ function messageOf(error) {
 
 /* Start */
 
+const settings = loadSettings();
+ui.media.append(
+  optionGroup(
+    "Continuous rolls",
+    LABELS.filter((media) => !media.lengthMm),
+  ),
+  optionGroup(
+    "Labels",
+    LABELS.filter((media) => media.lengthMm),
+  ),
+);
+ui.media.value = LABELS.some(({ id }) => id === settings.media) ? settings.media : DEFAULT_MEDIA.id;
+const darknessChoice = ui.controls.elements.namedItem("darkness");
+if (darknessChoice instanceof RadioNodeList && settings.darkness in TONES)
+  darknessChoice.value = settings.darkness;
+ui.cropBorder.checked = settings.cropBorder === true;
+
 const params = new URLSearchParams(location.search);
 ui.query.value = params.get("q") ?? "";
-if (params.get("scope") === "all")
+if (params.get("scope") === "all") {
   element('input[name="scope"][value="all"]', HTMLInputElement).checked = true;
+}
 showPrinter();
+showLabelSize(currentMedia());
 updatePrintButton();
 printer.restore();
 if (ui.query.value) search();

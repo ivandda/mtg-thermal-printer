@@ -67,6 +67,10 @@
         <fieldset id="printings" class="printings" aria-label="Printings"></fieldset>
 
         <form id="controls" class="controls">
+          <div class="field">
+            <label for="media">Label</label>
+            <select id="media" name="media"></select>
+          </div>
           <fieldset id="faces-field" class="field" hidden>
             <legend>Side</legend>
             <div id="faces" class="segmented"></div>
@@ -79,6 +83,10 @@
               <label><input type="radio" name="darkness" value="darker"><span>Darker</span></label>
             </div>
           </fieldset>
+          <label class="checkbox">
+            <input id="crop-border" name="crop-border" type="checkbox">
+            Print without the black border
+          </label>
           <div class="field copies">
             <label for="copies">Copies</label>
             <div class="stepper">
