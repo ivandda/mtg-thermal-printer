@@ -1,5 +1,6 @@
 /** @import { ScryfallCard, ScryfallClient } from "../scryfall/client.js" */
 import { ScryfallError } from "../scryfall/client.js";
+import { addressParam, updateAddress } from "./address.js";
 import { cardThumbnail, element } from "./dom.js";
 
 const SEARCH_DELAY_MS = 300;
@@ -8,8 +9,7 @@ const SEARCH_DELAY_MS = 300;
 const groupOf = (card) => card.oracle_id ?? card.id;
 
 /**
- * The search box, suggestions and results. The search is kept in the address bar, so reloading or
- * sharing the page repeats it.
+ * The search box, suggestions and results.
  * @param {object} options
  * @param {ScryfallClient} options.scryfall
  * @param {(card: ScryfallCard) => void} options.onSelect
@@ -66,7 +66,7 @@ export function createSearch({ scryfall, onSelect }) {
     const text = ui.query.value.trim();
     const id = ++searchId;
     const tokensOnly = !ui.allCards.checked;
-    rememberSearch(text, tokensOnly);
+    updateAddress({ q: text || undefined, scope: tokensOnly ? undefined : "all" });
     ui.suggestions.hidden = text !== "";
     if (!text) {
       results = [];
@@ -107,18 +107,6 @@ export function createSearch({ scryfall, onSelect }) {
     ui.more.textContent = loading ? "Loading…" : "Show more";
   }
 
-  /**
-   * @param {string} text
-   * @param {boolean} tokensOnly
-   */
-  function rememberSearch(text, tokensOnly) {
-    const url = new URL(location.href);
-    url.search = "";
-    if (text) url.searchParams.set("q", text);
-    if (!tokensOnly) url.searchParams.set("scope", "all");
-    history.replaceState(history.state, "", url);
-  }
-
   function showResults() {
     ui.results.replaceChildren(...results.map(resultItem));
     ui.more.hidden = !nextPage;
@@ -147,9 +135,15 @@ export function createSearch({ scryfall, onSelect }) {
     return item;
   }
 
-  const params = new URLSearchParams(location.search);
-  ui.query.value = params.get("q") ?? "";
-  ui.allCards.checked = params.get("scope") === "all";
+  ui.query.value = addressParam("q") ?? "";
+  ui.allCards.checked = addressParam("scope") === "all";
   ui.tokens.checked = !ui.allCards.checked;
   if (ui.query.value) search();
+
+  return {
+    /** @param {string} message */
+    showStatus(message) {
+      ui.status.textContent = message;
+    },
+  };
 }

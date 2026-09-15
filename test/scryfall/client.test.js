@@ -26,26 +26,39 @@ function fakeScryfall(replies) {
 }
 
 const PILOT = { id: "1", name: "Pilot" };
+const NO_RESULTS = { data: [], total_cards: 0, has_more: false };
 
-test("card lookups are sent one at a time, 500 ms apart", async () => {
-  const { client, requests } = fakeScryfall([{ body: PILOT }, { body: PILOT }]);
-  await Promise.all([client.cardNamed("pilot"), client.cardNamed("pilot token")]);
+test("searches are sent one at a time, 500 ms apart", async () => {
+  const { client, requests } = fakeScryfall([{ body: NO_RESULTS }, { body: NO_RESULTS }]);
+  await Promise.all([client.search("pilot"), client.search("pilot token")]);
   assert.deepEqual(
     requests.map(({ at }) => at),
     [0, 500],
   );
 });
 
+test("cards fetched by ID are 100 ms apart", async () => {
+  const { client, requests } = fakeScryfall([{ body: PILOT }, { body: PILOT }]);
+  await Promise.all([client.card("1"), client.card("2")]);
+  assert.deepEqual(
+    requests.map(({ url, at }) => [new URL(url).pathname, at]),
+    [
+      ["/cards/1", 0],
+      ["/cards/2", 100],
+    ],
+  );
+});
+
 test("repeated requests are served from the cache", async () => {
   const { client, requests } = fakeScryfall([{ body: PILOT }]);
-  assert.deepEqual(await client.cardNamed("pilot"), PILOT);
-  assert.deepEqual(await client.cardNamed("pilot"), PILOT);
+  assert.deepEqual(await client.card("1"), PILOT);
+  assert.deepEqual(await client.card("1"), PILOT);
   assert.equal(requests.length, 1);
 });
 
 test("HTTP 429 pauses 30 seconds, then retries once", async () => {
   const { client, requests } = fakeScryfall([{ status: 429 }, { body: PILOT }]);
-  assert.deepEqual(await client.cardNamed("pilot"), PILOT);
+  assert.deepEqual(await client.card("1"), PILOT);
   assert.deepEqual(
     requests.map(({ at }) => at),
     [0, 30_000],
@@ -54,7 +67,7 @@ test("HTTP 429 pauses 30 seconds, then retries once", async () => {
 
 test("a second 429 in a row is reported instead of retried", async () => {
   const { client, requests } = fakeScryfall([{ status: 429 }, { status: 429 }]);
-  await assert.rejects(client.cardNamed("pilot"), ScryfallError);
+  await assert.rejects(client.card("1"), ScryfallError);
   assert.equal(requests.length, 2);
 });
 
@@ -63,12 +76,12 @@ test("failed requests are not cached", async () => {
     { status: 503, body: { details: "Down for maintenance" } },
     { body: PILOT },
   ]);
-  await assert.rejects(client.cardNamed("pilot"), { message: "Down for maintenance" });
-  assert.deepEqual(await client.cardNamed("pilot"), PILOT);
+  await assert.rejects(client.card("1"), { message: "Down for maintenance" });
+  assert.deepEqual(await client.card("1"), PILOT);
   assert.equal(requests.length, 2);
 });
 
 test("a search without matches returns an empty list", async () => {
   const { client } = fakeScryfall([{ status: 404, body: { details: "Your query didn't match any cards." } }]);
-  assert.deepEqual(await client.search("t:token name:zzzz"), { data: [], total_cards: 0, has_more: false });
+  assert.deepEqual(await client.search("t:token name:zzzz"), NO_RESULTS);
 });

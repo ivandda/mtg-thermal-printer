@@ -19,7 +19,7 @@
  * @property {{ name: string, image_uris?: ImageUris }[]} [card_faces]
  */
 
-/** @typedef {{ small: string, normal: string, large: string }} ImageUris */
+/** @typedef {{ small: string, normal: string, large: string, png: string }} ImageUris */
 
 /** @typedef {{ data: ScryfallCard[], total_cards: number, has_more: boolean }} ScryfallList */
 
@@ -122,11 +122,11 @@ export function createScryfallClient({
     },
 
     /**
-     * The card whose name best matches, e.g. "lightning bolt".
-     * @param {string} name
+     * One printing, by its Scryfall ID.
+     * @param {string} id
      * @returns {Promise<ScryfallCard>}
      */
-    cardNamed: (name) => get(`/cards/named?${new URLSearchParams({ fuzzy: name })}`),
+    card: (id) => get(`/cards/${encodeURIComponent(id)}`),
   };
 }
 
