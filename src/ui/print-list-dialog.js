@@ -2,7 +2,7 @@
 /** @import { PrinterConnection } from "../printers/connection.js" */
 /** @import { Bitmap, Media } from "../printers/types.js" */
 /** @import { LabelSize } from "./label-size.js" */
-import { describeDesign, renderDesign } from "../designs.js";
+import { describeDesign, pageCount, renderDesign } from "../designs.js";
 import { drawBitmap, element, problemMessage } from "./dom.js";
 import { preparePrinter } from "./printer-button.js";
 import { bindStepper } from "./stepper.js";
@@ -153,7 +153,10 @@ export function createPrintListDialog({ printer, labelSize, printList }) {
   }
 
   function updatePrintAll() {
-    const labels = printList.items.reduce((sum, item) => sum + item.copies, 0);
+    const labels = printList.items.reduce(
+      (sum, item) => sum + item.copies * pageCount(item.design, labelSize.current),
+      0,
+    );
     if (printer.state.kind === "unsupported") {
       ui.printAll.disabled = true;
       ui.printAll.textContent = "Printing needs Chrome or Edge";

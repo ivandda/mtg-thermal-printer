@@ -1,36 +1,44 @@
 import { addressParam, updateAddress } from "./address.js";
 import { element } from "./dom.js";
 
-/** @typedef {"find" | "create"} Mode */
+/** @typedef {"find" | "create" | "markers"} Mode */
+
+/** @type {Record<Mode, string>} */
+const BACK_LABELS = { find: "Back to results", create: "Back to the token", markers: "Back to the markers" };
 
 /**
- * The tabs that switch between finding a card and creating a token. The choice is kept in the
- * address.
+ * The tabs that switch between finding a card, creating a token and picking markers. The choice is
+ * kept in the address.
  * @param {(mode: Mode) => void} onChange
  */
 export function createModes(onChange) {
-  const find = element('input[name="mode"][value="find"]', HTMLInputElement);
-  const create = element('input[name="mode"][value="create"]', HTMLInputElement);
+  const inputs = [...document.querySelectorAll('input[name="mode"]')].filter(
+    (input) => input instanceof HTMLInputElement,
+  );
   const back = element("#back", HTMLButtonElement);
+  const current = () => /** @type {Mode} */ (document.body.dataset.mode);
 
   /** @param {Mode} mode */
   function show(mode) {
-    find.checked = mode === "find";
-    create.checked = mode === "create";
+    for (const input of inputs) input.checked = input.value === mode;
     document.body.dataset.mode = mode;
-    back.textContent = mode === "create" ? "Back to the token" : "Back to results";
-    updateAddress({ mode: mode === "create" ? "create" : undefined });
+    back.textContent = BACK_LABELS[mode];
+    rememberMode();
     onChange(mode);
   }
 
-  for (const input of [find, create]) {
-    input.addEventListener("change", () => show(create.checked ? "create" : "find"));
+  function rememberMode() {
+    updateAddress({ mode: current() === "find" ? undefined : current() });
+  }
+
+  for (const input of inputs) {
+    input.addEventListener("change", () => show(/** @type {Mode} */ (input.value)));
   }
   // Going back returns to an address saved before the mode may have changed, so it is written again.
-  addEventListener("popstate", () => {
-    updateAddress({ mode: document.body.dataset.mode === "create" ? "create" : undefined });
-  });
-  if (addressParam("mode") === "create") show("create");
+  addEventListener("popstate", rememberMode);
+
+  const linked = addressParam("mode");
+  if (linked === "create" || linked === "markers") show(linked);
 
   return { show };
 }

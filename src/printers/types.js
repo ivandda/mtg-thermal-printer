@@ -22,6 +22,7 @@
  * @property {number} printableWidth   Printable area in dots.
  * @property {number} printableHeight  Printable area in dots.
  * @property {"rectangle" | "round"} shape
+ * @property {number} dpi  Dots per inch, to draw things at a physical size.
  */
 
 /**

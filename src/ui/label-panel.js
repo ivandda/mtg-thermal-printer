@@ -5,8 +5,9 @@
 /** @import { ScryfallCard, ScryfallClient } from "../scryfall/client.js" */
 /** @import { Rect } from "./art-arranger.js" */
 /** @import { LabelSize } from "./label-size.js" */
-import { artBoxOf, DARKNESS, isBlankToken, loadArt, renderDesign } from "../designs.js";
+import { artBoxOf, DARKNESS, isBlankToken, loadArt, pageCount, renderDesign } from "../designs.js";
 import { cardSize } from "../imaging/card.js";
+import { markerTotal } from "../markers.js";
 import { clampCopies } from "../print-list.js";
 import { cardFaces, pickCard } from "../scryfall/client.js";
 import { updateAddress } from "./address.js";
@@ -59,13 +60,15 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
   const styleChoice = /** @type {RadioNodeList} */ (ui.controls.elements.namedItem("style"));
 
   const state = {
-    /** What the label is made from. @type {"card" | "token"} */
+    /** What the label is made from. @type {"card" | "token" | "markers"} */
     source: "card",
     /** The chosen printing. @type {ScryfallCard | undefined} */
     card: undefined,
     face: 0,
     /** @type {Token | undefined} */
     token: undefined,
+    /** How many of each marker, by ID. @type {Record<string, number>} */
+    markers: {},
     /** The label as it will print. @type {Bitmap | undefined} */
     page: undefined,
     /** The token's image and where it is on the label, for arranging it. @type {ImageBitmap | undefined} */
@@ -86,6 +89,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     if (state.source === "token") {
       return state.token && { ...state.token, type: /** @type {const} */ ("token"), darkness: darkness() };
     }
+    if (state.source === "markers") return { type: "markers", counts: state.markers };
     if (!state.card) return undefined;
     return {
       type: "card",
@@ -211,6 +215,18 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     updatePreview(sameToken && state.page !== undefined);
   }
 
+  /* Markers */
+
+  /** @param {Record<string, number>} counts */
+  function showMarkers(counts) {
+    const sameSource = state.source === "markers";
+    state.source = "markers";
+    state.markers = counts;
+    showHeading();
+    showOptions();
+    updatePreview(sameSource && state.page !== undefined);
+  }
+
   const arranger = bindArtArranger({
     canvas: ui.preview,
     target() {
@@ -232,7 +248,15 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
   function showHeading() {
     ui.heading.hidden = false;
     let name = "";
-    if (state.source === "token") {
+    if (state.source === "markers") {
+      const total = markerTotal(state.markers);
+      const labels = pageCount({ type: "markers", counts: state.markers }, labelSize.current);
+      name = "Markers";
+      ui.cardSet.textContent =
+        total === 0
+          ? "Pick markers to print"
+          : `${total} ${total === 1 ? "marker" : "markers"} on ${labels} ${labels === 1 ? "label" : "labels"}`;
+    } else if (state.source === "token") {
       name = state.token?.name.trim() || "New token";
       ui.cardSet.textContent = "Custom token";
     } else if (state.card) {
@@ -245,16 +269,17 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
 
   /** Shows only the options that change the label. */
   function showOptions() {
-    const token = state.source === "token";
-    const text = token || style() === "text";
-    const hasArt = token ? Boolean(state.token?.art) : !text || ui.includeArt.checked;
-    ui.customize.hidden = token || !state.card;
-    ui.printings.hidden = token;
-    ui.facesField.hidden = token || !state.card || cardFaces(state.card).length < 2;
-    ui.styleField.hidden = token;
-    ui.borderOption.hidden = token || text;
-    ui.artOption.hidden = token || !text;
-    ui.arrangeFields.hidden = !(token && state.token?.art);
+    const { source } = state;
+    const card = source === "card";
+    const text = source === "token" || style() === "text";
+    const hasArt = source === "token" ? Boolean(state.token?.art) : card && (!text || ui.includeArt.checked);
+    ui.customize.hidden = !card || !state.card;
+    ui.printings.hidden = !card;
+    ui.facesField.hidden = !card || !state.card || cardFaces(state.card).length < 2;
+    ui.styleField.hidden = !card;
+    ui.borderOption.hidden = !card || text;
+    ui.artOption.hidden = !card || !text;
+    ui.arrangeFields.hidden = !(source === "token" && state.token?.art);
     ui.darknessField.hidden = !hasArt;
   }
 
@@ -276,6 +301,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     if (!current) return;
     const id = ++renderId;
     const media = labelSize.current;
+    if (state.source === "markers") showHeading(); // the label count depends on the label size
     if (!quiet) {
       state.page = undefined;
       ui.status.textContent = "";
@@ -338,8 +364,9 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     updateButtons();
     try {
       const pages = await renderDesign(current, media);
-      await printer.print(Array.from({ length: count }, () => pages).flat());
-      ui.status.textContent = count === 1 ? "Printed." : `Printed ${count} labels.`;
+      const labels = Array.from({ length: count }, () => pages).flat();
+      await printer.print(labels);
+      ui.status.textContent = labels.length === 1 ? "Printed." : `Printed ${labels.length} labels.`;
     } catch (error) {
       ui.status.textContent = problemMessage(error);
     } finally {
@@ -360,7 +387,11 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
 
   function updateButtons() {
     const count = copies();
-    const nothingToPrint = state.source === "token" ? !state.token || isBlankToken(state.token) : !state.card;
+    const nothingToPrint = {
+      card: !state.card,
+      token: !state.token || isBlankToken(state.token),
+      markers: markerTotal(state.markers) === 0,
+    }[state.source];
     ui.addToList.disabled = nothingToPrint;
     if (printer.state.kind === "unsupported") {
       ui.print.disabled = true;
@@ -369,11 +400,13 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     }
     ui.print.disabled =
       nothingToPrint || !state.page || state.printing || printer.state.kind === "connecting";
+    const current = design();
+    const labels = count * (current ? pageCount(current, labelSize.current) : 1);
     ui.print.textContent = state.printing
       ? "Printing…"
-      : count === 1
+      : labels === 1
         ? "Print label"
-        : `Print ${count} labels`;
+        : `Print ${labels} labels`;
   }
 
   /* Events */
@@ -434,6 +467,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
   return {
     showCard,
     showCards,
+    showMarkers,
     showToken,
     /** @param {string} message */
     showStatus(message) {

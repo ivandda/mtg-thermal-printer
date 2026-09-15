@@ -28,6 +28,7 @@
         <legend class="visually-hidden">What to print</legend>
         <label><input type="radio" name="mode" value="find" checked><span class="tab">Find cards</span></label>
         <label><input type="radio" name="mode" value="create"><span class="tab">Create a token</span></label>
+        <label><input type="radio" name="mode" value="markers"><span class="tab">Markers</span></label>
       </fieldset>
 
       <section class="browse" aria-label="Find a card">
@@ -109,7 +110,7 @@
           </fieldset>
 
           <p id="token-status" class="token-status" aria-live="polite"></p>
-          <button id="preview-token" class="print preview-token" type="button">Preview and print</button>
+          <button id="preview-token" class="print preview-button" type="button">Preview and print</button>
           <div class="token-footer">
             <p class="hint">Tokens are saved in this browser. Images never leave your device.</p>
             <button id="delete-token" class="text-button" type="button" hidden>Delete token</button>
@@ -120,6 +121,15 @@
             </div>
           </div>
         </form>
+      </section>
+
+      <section class="markers" aria-label="Markers">
+        <p class="hint">Choose how many of each marker you need. They're packed onto as few labels as possible, with dashed lines to cut along.</p>
+        <div id="marker-groups" class="marker-groups"></div>
+        <div class="markers-footer">
+          <button id="preview-markers" class="print preview-button" type="button">Preview and print</button>
+          <button id="clear-markers" class="text-button" type="button" hidden>Clear all</button>
+        </div>
       </section>
       </div>
 
@@ -237,6 +247,17 @@
         </footer>
       </div>
     </dialog>
+
+    <template id="marker-row">
+      <li class="marker-row">
+        <span class="marker-name"></span>
+        <div class="stepper">
+          <button type="button" data-step="-1">−</button>
+          <input type="number" inputmode="numeric" min="0" max="20" value="0">
+          <button type="button" data-step="1">+</button>
+        </div>
+      </li>
+    </template>
 
     <template id="list-item">
       <li class="list-item">
