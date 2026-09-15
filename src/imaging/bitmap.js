@@ -44,15 +44,30 @@ export function ditherToBitmap(image, { black = 40, white = 195, gamma = 0.9 } =
 }
 
 /**
- * Black-on-white RGBA pixels for previewing a bitmap, e.g. with `new ImageData(...)`.
+ * Shrinks a bitmap for display by averaging the dots under each screen pixel into a grey, the way
+ * they blend on paper at arm's length. Letting the browser scale 1-bit dots turns them into noise.
  * @param {Bitmap} bitmap
+ * @param {number} width  Display width in device pixels.
  */
-export function bitmapToRgba({ pixels }) {
-  const data = new Uint8ClampedArray(pixels.length * 4).fill(255);
-  pixels.forEach((ink, i) => {
-    if (ink) data.fill(0, i * 4, i * 4 + 3);
-  });
-  return data;
+export function shrinkBitmap(bitmap, width) {
+  const scale = bitmap.width / width;
+  const height = Math.max(1, Math.round(bitmap.height / scale));
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    const top = Math.floor(y * scale);
+    const bottom = Math.max(top + 1, Math.min(bitmap.height, Math.floor((y + 1) * scale)));
+    for (let x = 0; x < width; x++) {
+      const left = Math.floor(x * scale);
+      const right = Math.max(left + 1, Math.min(bitmap.width, Math.floor((x + 1) * scale)));
+      let ink = 0;
+      for (let row = top; row < bottom; row++) {
+        for (let column = left; column < right; column++) ink += bitmap.pixels[row * bitmap.width + column];
+      }
+      const grey = 255 - Math.round((255 * ink) / ((bottom - top) * (right - left)));
+      data.set([grey, grey, grey, 255], (y * width + x) * 4);
+    }
+  }
+  return { width, height, data };
 }
 
 /**

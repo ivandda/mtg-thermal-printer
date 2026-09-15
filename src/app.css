@@ -175,6 +175,7 @@ canvas {
   font-size: 1.125rem;
   font-weight: 700;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .printer {
@@ -316,7 +317,7 @@ canvas {
   position: sticky;
   top: 1.5rem;
   display: grid;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
 .back {
@@ -328,7 +329,8 @@ canvas {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.375rem 0.625rem;
   justify-self: center;
-  width: min(100%, 15rem);
+  /* Shrinks on short screens so the Print button stays in view. */
+  width: clamp(11rem, (100dvh - 29rem) / 1.5, 15rem);
   margin: 0;
 }
 
@@ -443,6 +445,7 @@ canvas {
 
 .printings {
   display: flex;
+  scrollbar-width: thin;
   min-inline-size: 0;
   border: 0;
   gap: 0.625rem;
@@ -593,6 +596,10 @@ canvas {
 
   .bar {
     padding-inline: 1rem;
+  }
+
+  .name {
+    font-size: 1rem;
   }
 
   .printer[data-state="ready"] .detail {

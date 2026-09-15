@@ -1,6 +1,6 @@
 /** @import { Bitmap, Media } from "./printers/types.js" */
 /** @import { ScryfallCard } from "./scryfall/client.js" */
-import { bitmapToRgba } from "./imaging/bitmap.js";
+import { shrinkBitmap } from "./imaging/bitmap.js";
 import { renderCard, TONES } from "./imaging/card.js";
 import { PrinterConnection } from "./printers/connection.js";
 import { drivers } from "./printers/index.js";
@@ -314,12 +314,8 @@ async function updatePreview() {
     const image = await loadImage(url);
     if (id !== renderId) return;
     const page = renderCard(image, media, TONES[darkness()]);
-    ui.preview.width = page.width;
-    ui.preview.height = page.height;
-    ui.preview
-      .getContext("2d")
-      ?.putImageData(new ImageData(bitmapToRgba(page), page.width, page.height), 0, 0);
     state.page = page;
+    drawPreview();
     ui.label.dataset.state = "ready";
   } catch (error) {
     if (id !== renderId) return;
@@ -331,6 +327,22 @@ async function updatePreview() {
   }
   updatePrintButton();
 }
+
+/** Draws the label at the size it is shown, so the preview stays sharp on any screen. */
+function drawPreview() {
+  const page = state.page;
+  const context = ui.preview.getContext("2d");
+  if (!page || !context) return;
+  const { width, height, data } = shrinkBitmap(
+    page,
+    Math.round(ui.preview.clientWidth * devicePixelRatio) || page.width,
+  );
+  ui.preview.width = width;
+  ui.preview.height = height;
+  context.putImageData(new ImageData(data, width, height), 0, 0);
+}
+
+new ResizeObserver(drawPreview).observe(ui.preview);
 
 /** @param {Media} media */
 function showLabelSize(media) {

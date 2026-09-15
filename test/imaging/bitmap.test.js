@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { bitmapToRgba, ditherToBitmap, thresholdToBitmap } from "../../src/imaging/bitmap.js";
+import { ditherToBitmap, shrinkBitmap, thresholdToBitmap } from "../../src/imaging/bitmap.js";
 
 /**
  * A uniform image of one grey level.
@@ -37,7 +37,14 @@ test("dither: midtones become a proportional dot pattern", () => {
   assert.ok(ratio > 0.4 && ratio < 0.6, `ink ratio ${ratio}`);
 });
 
-test("preview pixels are black where the bitmap has ink", () => {
-  const rgba = bitmapToRgba({ width: 2, height: 1, pixels: Uint8Array.of(1, 0) });
-  assert.deepEqual([...rgba], [0, 0, 0, 255, 255, 255, 255, 255]);
+test("shrinking averages the dots under each pixel into a grey", () => {
+  const checkerboard = { width: 2, height: 2, pixels: Uint8Array.of(1, 0, 0, 1) };
+  assert.deepEqual([...shrinkBitmap(checkerboard, 1).data], [127, 127, 127, 255]);
+});
+
+test("shrinking keeps the bitmap's proportions", () => {
+  const page = { width: 696, height: 1109, pixels: new Uint8Array(696 * 1109).fill(1) };
+  const preview = shrinkBitmap(page, 232);
+  assert.deepEqual([preview.width, preview.height], [232, 370]);
+  assert.equal(preview.data[0], 0);
 });
