@@ -4,10 +4,10 @@ import { element } from "./dom.js";
 /** @typedef {"find" | "create" | "markers"} Mode */
 
 /** @type {Record<Mode, string>} */
-const BACK_LABELS = { find: "Back to results", create: "Back to the token", markers: "Back to the markers" };
+const BACK_LABELS = { find: "Back to results", create: "Back to the card", markers: "Back to the markers" };
 
 /**
- * The tabs that switch between finding a card, creating a token and picking markers. The choice is
+ * The tabs that switch between finding a card, creating one and picking markers. The choice is
  * kept in the address.
  * @param {(mode: Mode) => void} onChange
  */

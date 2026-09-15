@@ -13,7 +13,7 @@ Search Magic: The Gathering cards and tokens and print them as stickers on a the
 - Optionally leave out the black border, so the art and text print larger.
 - Or print a card as text: name, type, rules with mana symbols, and power/toughness in large, solid black type, with the art if you like.
 - Print one or several copies; the printer cuts after each label.
-- Create your own tokens: name, type, power/toughness, rules text and an image you add, moved and zoomed right on the label preview. Or start from any card with Customize. Tokens and their images stay in your browser.
+- Create your own cards and tokens: name, mana cost (leave it empty for a token), type, power/toughness, rules text and an image you add, moved and zoomed right on the label preview. Or start from any card with Customize. Your cards and their images stay in your browser.
 - Print game markers (The Monarch, The Initiative, Day and Night…), trackers for speed, energy, experience and poison, and keyword markers like Flying or Lifelink, packed side by side onto as few labels as possible so they take few cuts.
 - Collect labels in a print list, each with its own options and copies, and print them all at once.
 - Bookmark or share a card: the address keeps the search and the chosen printing and side.

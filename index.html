@@ -27,7 +27,7 @@
       <fieldset class="modes">
         <legend class="visually-hidden">What to print</legend>
         <label><input type="radio" name="mode" value="find" checked><span class="tab">Find cards</span></label>
-        <label><input type="radio" name="mode" value="create"><span class="tab">Create a token</span></label>
+        <label><input type="radio" name="mode" value="create"><span class="tab">Create</span></label>
         <label><input type="radio" name="mode" value="markers"><span class="tab">Markers</span></label>
       </fieldset>
 
@@ -60,11 +60,11 @@
         <button id="more" class="button more" type="button" hidden>Show more</button>
       </section>
 
-      <section class="create" aria-label="Create a token">
+      <section class="create" aria-label="Create a card">
         <div id="my-tokens" class="my-tokens" hidden>
           <div class="section-head">
-            <h2>My tokens</h2>
-            <button id="new-token" class="button small" type="button">New token</button>
+            <h2>My cards</h2>
+            <button id="new-token" class="button small" type="button">New card</button>
           </div>
           <ul id="token-list" class="token-list"></ul>
         </div>
@@ -73,6 +73,11 @@
           <div class="token-field">
             <label for="token-name">Name</label>
             <input id="token-name" name="name" autocomplete="off">
+          </div>
+          <div class="token-field">
+            <label for="token-cost">Mana cost</label>
+            <input id="token-cost" name="cost" autocomplete="off" aria-describedby="cost-hint">
+            <p id="cost-hint" class="hint">Write it in braces, like {2}{G}. Leave it empty for a token.</p>
           </div>
           <div class="token-field">
             <label for="token-type">Type</label>
@@ -112,10 +117,10 @@
           <p id="token-status" class="token-status" aria-live="polite"></p>
           <button id="preview-token" class="print preview-button" type="button">Preview and print</button>
           <div class="token-footer">
-            <p class="hint">Tokens are saved in this browser. Images never leave your device.</p>
-            <button id="delete-token" class="text-button" type="button" hidden>Delete token</button>
+            <p class="hint">Your cards are saved in this browser. Images never leave your device.</p>
+            <button id="delete-token" class="text-button" type="button" hidden>Delete card</button>
             <div id="delete-confirm" class="delete-confirm" hidden>
-              <span>Delete this token?</span>
+              <span>Delete this card?</span>
               <button id="confirm-delete" class="button small" type="button">Delete</button>
               <button id="cancel-delete" class="button small" type="button">Keep</button>
             </div>

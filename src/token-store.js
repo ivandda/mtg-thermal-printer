@@ -40,7 +40,7 @@ async function run(name, mode, operation) {
   });
 }
 
-/** Custom tokens and the images added to them, saved in this browser's IndexedDB. */
+/** Custom cards and tokens and the images added to them, saved in this browser's IndexedDB. */
 export const tokenStore = {
   /** @returns {Promise<Token[]>} */
   list: () => run("tokens", "readonly", (store) => store.getAll()),
@@ -79,7 +79,7 @@ export function loadStoredImage(id) {
   let bitmap = bitmaps.get(id);
   if (!bitmap) {
     bitmap = run("images", "readonly", (store) => store.get(id)).then((blob) => {
-      if (!(blob instanceof Blob)) throw new Error("This token's image is no longer saved in this browser.");
+      if (!(blob instanceof Blob)) throw new Error("This card's image is no longer saved in this browser.");
       return createImageBitmap(blob);
     });
     bitmaps.set(id, bitmap);
