@@ -711,6 +711,23 @@ body:not([data-mode="markers"]) .markers {
   text-align: center;
 }
 
+/* Previous and next, when a print uses several labels */
+
+.pages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pages .button {
+  width: 2.5rem;
+  padding: 0;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
 .label.arrangeable canvas {
   cursor: grab;
   touch-action: none;
