@@ -1,0 +1,284 @@
+/** @import { Bitmap, Media } from "../printers/types.js" */
+/** @import { Word } from "./rules-text.js" */
+import { ditherToBitmap, pasteBitmap, thresholdToBitmap } from "./bitmap.js";
+import { cardSize } from "./card.js";
+import { fitRules, parseRules } from "./rules-text.js";
+
+const FONT = '"Atkinson Hyperlegible Next", system-ui, sans-serif';
+const CARD_WIDTH_MM = 63;
+const LINE_HEIGHT = 1.25;
+/** Symbols are drawn about as tall as capital letters and spaced like a wide letter. */
+const SYMBOL_SIZE = 0.8;
+const SYMBOL_ADVANCE = 1;
+/** Keeps the grey edges of letters, so thin strokes of small text still print. */
+const TEXT_THRESHOLD = 190;
+/** Height ÷ width of the art box; Scryfall's art crops are wider, so they are cropped to fit. */
+const ART_ASPECT = 0.62;
+
+/**
+ * @typedef {object} TextCard
+ * @property {string} name
+ * @property {string} manaCost  e.g. "{2}{G}"; empty for tokens.
+ * @property {string} typeLine
+ * @property {string} rules
+ * @property {string} stats  Power and toughness, such as "1/1", or loyalty; empty if none.
+ * @property {ImageBitmap} [art]
+ */
+
+/** Waits for the typeface, which a canvas doesn't load by itself. */
+export async function loadFonts() {
+  await Promise.all([document.fonts.load(font(400, 16)), document.fonts.load(font(700, 16))]);
+}
+
+/**
+ * Lays a card out as text, as large as a card image would print: name and mana cost, optional
+ * art, type line, rules text and power/toughness. Text prints solid black; only the art is dithered.
+ * @param {TextCard} card
+ * @param {Media} media
+ * @param {object} options
+ * @param {{ black: number, white: number, gamma: number }} options.tone  Applied to the art.
+ * @param {Map<string, CanvasImageSource>} options.symbols  Pictures of symbols such as "{T}".
+ * @returns {Bitmap}
+ */
+export function renderTextCard(card, media, { tone, symbols }) {
+  const box = cardSize(media);
+  const width = media.printableWidth;
+  const height = media.printableHeight || box.height;
+  const mm = box.width / CARD_WIDTH_MM;
+  const left = Math.round((width - box.width) / 2);
+  const top = Math.round((height - box.height) / 2);
+  const inner = {
+    left: left + 3 * mm,
+    right: left + box.width - 3 * mm,
+    top: top + 3 * mm,
+    bottom: top + box.height - 3 * mm,
+  };
+  const innerWidth = inner.right - inner.left;
+
+  const context = canvasContext(width, height);
+  context.fillStyle = "white";
+  context.fillRect(0, 0, width, height);
+  context.fillStyle = "black";
+  context.strokeStyle = "black";
+  context.lineWidth = 0.6 * mm;
+
+  /** @param {Word} word @param {number} size */
+  const measure = (word, size) => {
+    context.font = font(400, size);
+    return word.reduce(
+      (total, piece) =>
+        total + (piece.symbol ? size * SYMBOL_ADVANCE : context.measureText(piece.text).width),
+      0,
+    );
+  };
+
+  /**
+   * Draws a word's text and symbols from `x` on a baseline, and returns where it ends.
+   * @param {Word} word
+   * @param {number} x
+   * @param {number} baseline
+   * @param {number} size
+   * @param {number} weight
+   */
+  const drawWord = (word, x, baseline, size, weight) => {
+    for (const piece of word) {
+      const picture = piece.symbol && symbols.get(piece.text);
+      if (picture) {
+        const symbolSize = size * SYMBOL_SIZE;
+        const centerX = x + (size * SYMBOL_ADVANCE) / 2;
+        const centerY = baseline - size * 0.36;
+        context.drawImage(
+          picture,
+          centerX - symbolSize / 2,
+          centerY - symbolSize / 2,
+          symbolSize,
+          symbolSize,
+        );
+        // The symbol's coloured disc prints white, so its edge is drawn in.
+        context.beginPath();
+        context.lineWidth = Math.max(1, size * 0.06);
+        context.arc(centerX, centerY, symbolSize / 2, 0, 2 * Math.PI);
+        context.stroke();
+        x += size * SYMBOL_ADVANCE;
+      } else {
+        context.font = font(weight, size);
+        context.fillText(piece.text, x, baseline);
+        x += context.measureText(piece.text).width;
+      }
+    }
+    return x;
+  };
+
+  // Frame
+  context.beginPath();
+  context.roundRect(left + 0.3 * mm, top + 0.3 * mm, box.width - 0.6 * mm, box.height - 0.6 * mm, 3 * mm);
+  context.stroke();
+
+  // Name and mana cost
+  let y = inner.top;
+  const cost = parseRules(card.manaCost).flat();
+  const costSize = 4.5 * mm;
+  const costWidth = cost.reduce((total, word) => total + measure(word, costSize), 0);
+  const rowHeight = 8 * mm;
+  const nameWidth = innerWidth - (costWidth ? costWidth + 2 * mm : 0);
+  const nameSize = fitLine(context, card.name, 700, 5.5 * mm, nameWidth);
+  context.font = font(700, nameSize);
+  context.fillText(card.name, inner.left, y + rowHeight * 0.68, nameWidth);
+  let costX = inner.right - costWidth;
+  for (const word of cost) costX = drawWord(word, costX, y + rowHeight * 0.68, costSize, 700);
+  y += rowHeight;
+  rule(context, inner.left, inner.right, y, 0.4 * mm);
+
+  // Art
+  /** @type {{ x: number, y: number, width: number, height: number } | undefined} */
+  let artBox;
+  if (card.art) {
+    y += 2 * mm;
+    artBox = {
+      x: Math.round(inner.left),
+      y: Math.round(y),
+      width: Math.round(innerWidth),
+      height: Math.round(innerWidth * ART_ASPECT),
+    };
+    context.lineWidth = 0.4 * mm;
+    context.strokeRect(
+      artBox.x - 0.2 * mm,
+      artBox.y - 0.2 * mm,
+      artBox.width + 0.4 * mm,
+      artBox.height + 0.4 * mm,
+    );
+    y += artBox.height;
+  }
+
+  // Type line
+  y += 1 * mm;
+  const typeSize = fitLine(context, card.typeLine, 700, 4 * mm, innerWidth);
+  context.font = font(700, typeSize);
+  context.fillText(card.typeLine, inner.left, y + 7 * mm * 0.66, innerWidth);
+  y += 7 * mm;
+  rule(context, inner.left, inner.right, y, 0.4 * mm);
+
+  // Power and toughness
+  const statsHeight = 9 * mm;
+  if (card.stats) {
+    const statsSize = 6 * mm;
+    context.font = font(700, statsSize);
+    const statsWidth = context.measureText(card.stats).width + 5 * mm;
+    context.lineWidth = 0.6 * mm;
+    context.beginPath();
+    context.roundRect(
+      inner.right - statsWidth,
+      inner.bottom - statsHeight,
+      statsWidth,
+      statsHeight,
+      1.5 * mm,
+    );
+    context.stroke();
+    context.textAlign = "center";
+    context.fillText(
+      card.stats,
+      inner.right - statsWidth / 2,
+      inner.bottom - statsHeight / 2 + statsSize * 0.36,
+    );
+    context.textAlign = "start";
+  }
+
+  // Rules text
+  y += 2 * mm;
+  const rulesBottom = inner.bottom - (card.stats ? statsHeight + 1 * mm : 0);
+  const fitted = fitRules(
+    parseRules(card.rules),
+    {
+      width: innerWidth,
+      height: rulesBottom - y,
+      largest: (card.art ? 4.5 : 6) * mm,
+      smallest: 2.4 * mm,
+      lineHeight: LINE_HEIGHT,
+    },
+    measure,
+    (size) => measure([{ text: " ", symbol: false }], size),
+  );
+  const space = measure([{ text: " ", symbol: false }], fitted.size);
+  const lineStep = fitted.size * LINE_HEIGHT;
+  for (const lines of fitted.paragraphs) {
+    for (const line of lines) {
+      y += lineStep;
+      let x = inner.left;
+      for (const word of line) x = drawWord(word, x, y - fitted.size * 0.3, fitted.size, 400) + space;
+    }
+    y += lineStep / 2;
+  }
+
+  const page = thresholdToBitmap(context.getImageData(0, 0, width, height), TEXT_THRESHOLD);
+  if (card.art && artBox) pasteBitmap(page, renderArt(card.art, artBox, tone), artBox.x, artBox.y);
+  return page;
+}
+
+/**
+ * The art cropped to fill its box, never stretched, and dithered like a card image.
+ * @param {ImageBitmap} art
+ * @param {{ width: number, height: number }} box
+ * @param {{ black: number, white: number, gamma: number }} tone
+ */
+function renderArt(art, box, tone) {
+  const context = canvasContext(box.width, box.height);
+  const scale = Math.max(box.width / art.width, box.height / art.height);
+  const cropWidth = box.width / scale;
+  const cropHeight = box.height / scale;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(
+    art,
+    (art.width - cropWidth) / 2,
+    (art.height - cropHeight) / 2,
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    box.width,
+    box.height,
+  );
+  return ditherToBitmap(context.getImageData(0, 0, box.width, box.height), tone);
+}
+
+/**
+ * The largest size, up to `largest`, at which one line of text fits the width.
+ * @param {OffscreenCanvasRenderingContext2D} context
+ * @param {string} text
+ * @param {number} weight
+ * @param {number} largest
+ * @param {number} width
+ */
+function fitLine(context, text, weight, largest, width) {
+  context.font = font(weight, largest);
+  const measured = context.measureText(text).width;
+  return measured > width ? Math.max(largest / 2, (largest * width) / measured) : largest;
+}
+
+/**
+ * @param {OffscreenCanvasRenderingContext2D} context
+ * @param {number} from
+ * @param {number} to
+ * @param {number} y
+ * @param {number} thickness
+ */
+function rule(context, from, to, y, thickness) {
+  context.fillRect(from, y - thickness / 2, to - from, thickness);
+}
+
+/**
+ * @param {number} width
+ * @param {number} height
+ */
+function canvasContext(width, height) {
+  const context = new OffscreenCanvas(width, height).getContext("2d");
+  if (!context) throw new Error("Canvas is not available");
+  return context;
+}
+
+/**
+ * @param {number} weight
+ * @param {number} size
+ */
+function font(weight, size) {
+  return `${weight} ${size}px ${FONT}`;
+}

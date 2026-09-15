@@ -8,18 +8,34 @@
 
 /**
  * The parts of a Scryfall card object this app uses (https://scryfall.com/docs/api/cards).
- * @typedef {object} ScryfallCard
- * @property {string} id
- * @property {string} [oracle_id]
- * @property {string} name
- * @property {string} set_name
- * @property {string} collector_number
- * @property {string} [border_color]  e.g. "black" or "borderless"
- * @property {ImageUris} [image_uris]
- * @property {{ name: string, image_uris?: ImageUris }[]} [card_faces]
+ * @typedef {CardText & {
+ *   id: string,
+ *   oracle_id?: string,
+ *   name: string,
+ *   set_name: string,
+ *   collector_number: string,
+ *   border_color?: string,
+ *   image_uris?: ImageUris,
+ *   card_faces?: CardFace[],
+ * }} ScryfallCard
  */
 
-/** @typedef {{ small: string, normal: string, large: string, png: string }} ImageUris */
+/**
+ * A face of a double-faced card, or a half of a split or adventure card.
+ * @typedef {CardText & { name: string, image_uris?: ImageUris }} CardFace
+ */
+
+/**
+ * @typedef {object} CardText
+ * @property {string} [mana_cost]
+ * @property {string} [type_line]
+ * @property {string} [oracle_text]
+ * @property {string} [power]
+ * @property {string} [toughness]
+ * @property {string} [loyalty]
+ */
+
+/** @typedef {{ small: string, normal: string, large: string, png: string, art_crop: string }} ImageUris */
 
 /** @typedef {{ data: ScryfallCard[], total_cards: number, has_more: boolean }} ScryfallList */
 
@@ -153,24 +169,53 @@ export function cardFaces(card) {
  * @param {ScryfallCard} card
  * @returns {ScryfallCard}
  */
-export function pickCard({
-  id,
-  oracle_id,
-  name,
-  set_name,
-  collector_number,
-  border_color,
-  image_uris,
-  card_faces,
-}) {
+export function pickCard(card) {
   return {
-    id,
-    oracle_id,
-    name,
-    set_name,
-    collector_number,
-    border_color,
-    image_uris,
-    card_faces: card_faces?.map((face) => ({ name: face.name, image_uris: face.image_uris })),
+    ...pickText(card),
+    id: card.id,
+    oracle_id: card.oracle_id,
+    name: card.name,
+    set_name: card.set_name,
+    collector_number: card.collector_number,
+    border_color: card.border_color,
+    image_uris: card.image_uris,
+    card_faces: card.card_faces?.map((face) => ({
+      ...pickText(face),
+      name: face.name,
+      image_uris: face.image_uris,
+    })),
+  };
+}
+
+/**
+ * @param {CardText} source
+ * @returns {CardText}
+ */
+function pickText({ mana_cost, type_line, oracle_text, power, toughness, loyalty }) {
+  return { mana_cost, type_line, oracle_text, power, toughness, loyalty };
+}
+
+/**
+ * What is written on a card, or on one face of a double-faced card.
+ * @param {ScryfallCard} card
+ * @param {number} face
+ */
+export function cardText(card, face) {
+  const own = cardFaces(card)[face];
+  if (own) return textOf(own);
+  // Split and adventure cards keep the rules text on each half.
+  const text = textOf(card);
+  const halves = card.card_faces ?? [];
+  return { ...text, rules: text.rules || halves.map((half) => half.oracle_text ?? "").join("\n") };
+}
+
+/** @param {CardText & { name: string }} source */
+function textOf(source) {
+  return {
+    name: source.name,
+    manaCost: source.mana_cost ?? "",
+    typeLine: source.type_line ?? "",
+    rules: source.oracle_text ?? "",
+    stats: source.power ? `${source.power}/${source.toughness}` : (source.loyalty ?? ""),
   };
 }
