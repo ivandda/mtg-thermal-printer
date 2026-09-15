@@ -29,7 +29,8 @@ export const DARKNESS = Object.keys(TONES);
  */
 export async function renderDesign(design, media) {
   const { card, face, darkness, cropBorder } = design;
-  const url = imageUrl(card, face);
+  // The PNG is larger than the print head is wide and has no JPEG blur on small text.
+  const url = imageUrl(card, face, "png") ?? imageUrl(card, face);
   if (!url) throw new Error(`Scryfall has no image of ${card.name}.`);
   const image = await loadImage(url);
   return [

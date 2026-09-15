@@ -8,6 +8,7 @@ import { DARKNESS, renderDesign } from "../designs.js";
 import { cardSize } from "../imaging/card.js";
 import { clampCopies } from "../print-list.js";
 import { cardFaces, pickCard } from "../scryfall/client.js";
+import { updateAddress } from "./address.js";
 import { cardThumbnail, drawBitmap, element, problemMessage } from "./dom.js";
 import { preparePrinter } from "./printer-button.js";
 import { readSetting, writeSetting } from "./settings.js";
@@ -70,10 +71,13 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList }) {
 
   /* Card and printings */
 
-  /** @param {ScryfallCard} card */
-  function showCard(card) {
+  /**
+   * @param {ScryfallCard} card
+   * @param {number} [face]
+   */
+  function showCard(card, face = 0) {
     state.card = card;
-    state.face = 0;
+    state.face = face;
     ui.printings.replaceChildren();
     ui.status.textContent = "";
     showPrinting();
@@ -121,7 +125,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList }) {
     const card = state.card;
     if (!card) return;
     const faces = cardFaces(card);
-    if (state.face >= faces.length) state.face = 0;
+    if (!faces[state.face]) state.face = 0;
     ui.cardHeading.hidden = false;
     ui.cardSet.textContent = `${card.set_name}, #${card.collector_number}`;
     ui.facesField.hidden = faces.length < 2;
@@ -140,7 +144,13 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList }) {
     );
     showCardName();
     markChosenPrinting();
+    rememberCard();
     updatePreview();
+  }
+
+  /** Keeps the printing and side in the address, so the page can be bookmarked or shared. */
+  function rememberCard() {
+    updateAddress({ card: state.card?.id, face: state.face ? String(state.face) : undefined });
   }
 
   function showCardName() {
@@ -254,6 +264,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList }) {
     if (!(event.target instanceof HTMLInputElement) || event.target === ui.copies) return;
     const face = new FormData(ui.controls).get("face");
     if (face !== null) state.face = Number(face);
+    rememberCard();
     writeSetting("darkness", darkness());
     writeSetting("cropBorder", ui.cropBorder.checked);
     showCardName();
