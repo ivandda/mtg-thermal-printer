@@ -13,7 +13,8 @@ const SIZES = {
 };
 /** Length of a continuous label that has no markers on it yet. */
 const EMPTY_LENGTH_MM = 20;
-const CUT_LINE_MM = 0.25;
+/** Dashed lines to cut along, in millimetres. */
+const CUT_LINE = { width: 0.3, dash: 1.2, gap: 0.9 };
 const REMINDER_LINES = 4;
 
 /** @typedef {{ x: number, y: number, width: number, height: number }} Rect */
@@ -102,7 +103,7 @@ export function layoutMarkers(counts, media, custom = []) {
 }
 
 /**
- * Draws markers on as many labels as they need, with a thin line to cut along between neighbours.
+ * Draws markers on as many labels as they need, with a dashed line to cut along between neighbours.
  * @param {Record<string, number>} counts
  * @param {Media} media
  * @param {Marker[]} [custom]
@@ -116,30 +117,55 @@ export function renderMarkers(counts, media, custom = []) {
     context.fillRect(0, 0, media.printableWidth, height);
     context.fillStyle = "black";
     context.textAlign = "center";
-    for (const placed of markers) {
-      drawMarker(context, placed);
-      // Edges on the label's own edge need no cutting, except around the square on a round label.
-      drawCutLines(context, placed, round ? undefined : area, CUT_LINE_MM * placed.unit);
-    }
+    for (const placed of markers) drawMarker(context, placed);
+    drawCutLines(context, markers, round ? undefined : area, media.dpi / 25.4);
     return thresholdToBitmap(context.getImageData(0, 0, media.printableWidth, height), TEXT_THRESHOLD);
   });
 }
 
 /**
+ * Dashed lines to cut along, each drawn once, centred on the edge two markers share, and where a
+ * label's leftover space starts. The dashes line up from one marker to the next.
  * @param {OffscreenCanvasRenderingContext2D} context
- * @param {Rect} marker
- * @param {Rect | undefined} area  Edges along this area's sides are left out.
- * @param {number} thickness
+ * @param {PlacedMarker[]} markers
+ * @param {Rect | undefined} area  Edges on this area's sides are the label's own and get no line.
+ *   Without it, as on a round label, the outer edges get lines too.
+ * @param {number} dotsPerMm
  */
-function drawCutLines(context, { x, y, width, height }, area, thickness) {
-  const line = Math.max(1, Math.round(thickness));
-  const onEdge = (/** @type {number} */ a, /** @type {number} */ b) => area && Math.abs(a - b) < 1;
-  if (!onEdge(y, area?.y ?? 0)) context.fillRect(x, y, width, line);
-  if (!onEdge(y + height, (area?.y ?? 0) + (area?.height ?? 0)))
-    context.fillRect(x, y + height - line, width, line);
-  if (!onEdge(x, area?.x ?? 0)) context.fillRect(x, y, line, height);
-  if (!onEdge(x + width, (area?.x ?? 0) + (area?.width ?? 0)))
-    context.fillRect(x + width - line, y, line, height);
+function drawCutLines(context, markers, area, dotsPerMm) {
+  context.strokeStyle = "black";
+  context.lineWidth = Math.max(1, CUT_LINE.width * dotsPerMm);
+  context.setLineDash([CUT_LINE.dash * dotsPerMm, CUT_LINE.gap * dotsPerMm]);
+  /**
+   * @param {number} x1
+   * @param {number} y1
+   * @param {number} x2
+   * @param {number} y2
+   */
+  const line = (x1, y1, x2, y2) => {
+    context.lineDashOffset = x1 === x2 ? y1 : x1;
+    context.beginPath();
+    context.moveTo(x1, y1);
+    context.lineTo(x2, y2);
+    context.stroke();
+  };
+  /**
+   * @param {number} position
+   * @param {number | undefined} edge
+   */
+  const onLabelEdge = (position, edge) => edge !== undefined && Math.abs(position - edge) < 1;
+
+  for (const { x, y, width, height } of markers) {
+    const right = x + width;
+    const bottom = y + height;
+    if (!onLabelEdge(right, area && area.x + area.width)) line(right, y, right, bottom);
+    if (!onLabelEdge(bottom, area && area.y + area.height)) line(x, bottom, right, bottom);
+    // Left and top edges are a neighbour's right and bottom, except around a round label's square.
+    const first = markers[0];
+    if (!area && x === first.x) line(x, y, x, bottom);
+    if (!area && y === first.y) line(x, y, right, y);
+  }
+  context.setLineDash([]);
 }
 
 /**
