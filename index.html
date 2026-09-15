@@ -61,14 +61,20 @@
       </section>
 
       <section class="create" aria-label="Create a card">
-        <div id="my-tokens" class="my-tokens" hidden>
+        <div id="card-library" hidden>
           <div class="section-head">
             <h2>My cards</h2>
-            <button id="new-token" class="button small" type="button">New card</button>
+            <button id="new-token" class="button" type="button">New card</button>
           </div>
-          <ul id="token-list" class="token-list"></ul>
+          <p id="library-status" class="library-status" aria-live="polite"></p>
+          <ul id="token-list" class="library-list"></ul>
         </div>
 
+        <div id="card-editor" hidden>
+        <div class="editor-head">
+          <button id="to-library" class="text-button back-link" type="button">My cards</button>
+          <p id="save-state" class="save-state"></p>
+        </div>
         <form id="token-form" class="token-form" novalidate>
           <div class="token-field">
             <label for="token-name">Name</label>
@@ -98,6 +104,7 @@
           </div>
           <fieldset class="token-field">
             <legend>Image</legend>
+            <p class="hint">Images never leave your device.</p>
             <div id="image-drop" class="image-drop">
               <input id="token-image" type="file" accept="image/*" hidden>
               <p id="image-empty">
@@ -117,15 +124,18 @@
           <p id="token-status" class="token-status" aria-live="polite"></p>
           <button id="preview-token" class="print preview-button" type="button">Preview and print</button>
           <div class="token-footer">
-            <p class="hint">Your cards are saved in this browser. Images never leave your device.</p>
-            <button id="delete-token" class="text-button" type="button" hidden>Delete card</button>
-            <div id="delete-confirm" class="delete-confirm" hidden>
-              <span>Delete this card?</span>
+            <div id="editor-actions" class="editor-actions" hidden>
+              <button id="duplicate-token" class="button small" type="button">Duplicate</button>
+              <button id="delete-token" class="button small" type="button">Delete</button>
+            </div>
+            <div id="delete-confirm" class="editor-actions" hidden>
+              <span id="delete-question"></span>
               <button id="confirm-delete" class="button small" type="button">Delete</button>
               <button id="cancel-delete" class="button small" type="button">Keep</button>
             </div>
           </div>
         </form>
+        </div>
       </section>
 
       <section class="markers" aria-label="Markers">
@@ -258,6 +268,18 @@
         </footer>
       </div>
     </dialog>
+
+    <template id="library-item">
+      <li>
+        <button class="library-item" type="button">
+          <canvas width="56" height="78" aria-hidden="true"></canvas>
+          <span>
+            <span class="library-name"></span>
+            <span class="library-detail"></span>
+          </span>
+        </button>
+      </li>
+    </template>
 
     <template id="marker-row">
       <li class="marker-row">
