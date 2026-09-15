@@ -35,6 +35,10 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     labelLength: element("#label-length", HTMLElement),
     preview: element("#preview", HTMLCanvasElement),
     arrangeHint: element("#arrange-hint", HTMLElement),
+    pages: element("#pages", HTMLElement),
+    previousPage: element("#previous-page", HTMLButtonElement),
+    nextPage: element("#next-page", HTMLButtonElement),
+    pageNumber: element("#page-number", HTMLElement),
     heading: element("#card-heading", HTMLElement),
     cardName: element("#card-name", HTMLElement),
     cardSet: element("#card-set", HTMLElement),
@@ -69,7 +73,10 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     token: undefined,
     /** How many of each marker, by ID. @type {Record<string, number>} */
     markers: {},
-    /** The label as it will print. @type {Bitmap | undefined} */
+    /** Every label the design prints on, and the one shown. @type {Bitmap[]} */
+    pages: [],
+    pageIndex: 0,
+    /** The shown label as it will print. @type {Bitmap | undefined} */
     page: undefined,
     /** The token's image and where it is on the label, for arranging it. @type {ImageBitmap | undefined} */
     artImage: undefined,
@@ -127,8 +134,10 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     }
     renderId++;
     state.page = undefined;
+    state.pages = [];
     state.artBox = undefined;
     ui.label.dataset.state = "empty";
+    showPages();
     ui.heading.hidden = true;
     showOptions();
     showArrangeable();
@@ -304,6 +313,9 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     if (state.source === "markers") showHeading(); // the label count depends on the label size
     if (!quiet) {
       state.page = undefined;
+      state.pages = [];
+      state.pageIndex = 0;
+      showPages();
       ui.status.textContent = "";
       ui.label.dataset.state = "loading";
     }
@@ -311,23 +323,52 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     updateButtons();
 
     try {
-      const [page] = await renderDesign(current, media);
+      const pages = await renderDesign(current, media);
       const artImage = current.type === "token" && current.art ? await loadArt(current.art) : undefined;
       if (id !== renderId) return;
-      state.page = page;
+      state.pages = pages;
+      state.pageIndex = Math.min(state.pageIndex, pages.length - 1);
+      state.page = pages[state.pageIndex];
       state.artImage = artImage;
       state.artBox = artImage ? artBoxOf(current, media) : undefined;
-      drawBitmap(ui.preview, page);
+      drawBitmap(ui.preview, state.page);
       ui.label.dataset.state = "ready";
     } catch (error) {
       if (id !== renderId) return;
       state.page = undefined;
+      state.pages = [];
       state.artBox = undefined;
       ui.label.dataset.state = "empty";
       ui.status.textContent = problemMessage(error);
     }
     showArrangeable();
+    showPages();
     updateButtons();
+  }
+
+  /** Shows previous and next buttons when the design prints on more than one label. */
+  function showPages() {
+    const count = state.pages.length;
+    ui.pages.hidden = count < 2;
+    if (count < 2) return;
+    const focused = document.activeElement;
+    ui.pageNumber.textContent = `Label ${state.pageIndex + 1} of ${count}`;
+    ui.previousPage.disabled = state.pageIndex === 0;
+    ui.nextPage.disabled = state.pageIndex === count - 1;
+    // A button disabled while focused would drop keyboard focus, so it moves to the other one.
+    if (focused instanceof HTMLButtonElement && focused.disabled) {
+      (focused === ui.nextPage ? ui.previousPage : ui.nextPage).focus();
+    }
+  }
+
+  /** @param {number} step */
+  function turnPage(step) {
+    const index = state.pageIndex + step;
+    if (!state.pages[index]) return;
+    state.pageIndex = index;
+    state.page = state.pages[index];
+    drawBitmap(ui.preview, state.page);
+    showPages();
   }
 
   /**
@@ -436,6 +477,8 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     if (state.card) onCustomize(state.card, state.face);
   });
   ui.addToList.addEventListener("click", addToList);
+  ui.previousPage.addEventListener("click", () => turnPage(-1));
+  ui.nextPage.addEventListener("click", () => turnPage(1));
   bindStepper(ui.copiesStepper, updateButtons);
 
   labelSize.addEventListener("change", () => {
