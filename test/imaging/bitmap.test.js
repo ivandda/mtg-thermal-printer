@@ -1,8 +1,22 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { thresholdToBitmap } from "../../src/imaging/bitmap.js";
+import { bitmapToRgba, ditherToBitmap, thresholdToBitmap } from "../../src/imaging/bitmap.js";
 
-test("dark pixels print black; light and transparent pixels stay white", () => {
+/**
+ * A uniform image of one grey level.
+ * @param {number} grey
+ * @param {number} [size]
+ */
+function solid(grey, size = 32) {
+  const data = new Uint8ClampedArray(size * size * 4);
+  for (let i = 0; i < data.length; i += 4) data.set([grey, grey, grey, 255], i);
+  return { width: size, height: size, data };
+}
+
+/** @param {{ pixels: Uint8Array }} bitmap */
+const inkRatio = ({ pixels }) => pixels.reduce((sum, ink) => sum + ink, 0) / pixels.length;
+
+test("threshold: dark pixels print black; light and transparent pixels stay white", () => {
   // biome-ignore format: one RGBA pixel per line
   const data = Uint8ClampedArray.of(
     0, 0, 0, 255, // black
@@ -10,6 +24,20 @@ test("dark pixels print black; light and transparent pixels stay white", () => {
     90, 90, 90, 255, // dark grey
     0, 0, 0, 0, // transparent
   );
-  const bitmap = thresholdToBitmap({ width: 2, height: 2, data });
-  assert.deepEqual([...bitmap.pixels], [1, 0, 1, 0]);
+  assert.deepEqual([...thresholdToBitmap({ width: 2, height: 2, data }).pixels], [1, 0, 1, 0]);
+});
+
+test("dither: near-black and near-white become solid, so text and frames stay crisp", () => {
+  assert.equal(inkRatio(ditherToBitmap(solid(30))), 1);
+  assert.equal(inkRatio(ditherToBitmap(solid(210))), 0);
+});
+
+test("dither: midtones become a proportional dot pattern", () => {
+  const ratio = inkRatio(ditherToBitmap(solid(118)));
+  assert.ok(ratio > 0.4 && ratio < 0.6, `ink ratio ${ratio}`);
+});
+
+test("preview pixels are black where the bitmap has ink", () => {
+  const rgba = bitmapToRgba({ width: 2, height: 1, pixels: Uint8Array.of(1, 0) });
+  assert.deepEqual([...rgba], [0, 0, 0, 255, 255, 255, 255, 255]);
 });

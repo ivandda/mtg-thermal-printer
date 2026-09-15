@@ -6,16 +6,26 @@
     <title>MTG Thermal Printer · printer test</title>
     <style>
       body { font: 16px/1.5 system-ui, sans-serif; max-width: 36rem; margin: 3rem auto; padding: 0 1rem; }
-      button { font: inherit; padding: 0.5rem 1rem; margin-right: 0.5rem; }
+      button, input { font: inherit; padding: 0.5rem 0.75rem; margin: 0 0.5rem 0.5rem 0; }
       output { display: block; margin-top: 1rem; }
+      canvas { display: block; width: 16rem; margin-top: 1rem; border: 1px solid #ccc; }
     </style>
     <script type="module" src="src/printer-test.js"></script>
   </head>
   <body>
     <h1>Printer test</h1>
-    <p>Connect a Brother QL-700 over USB (Editor Lite light off) and print a test label.</p>
+    <p>Connect a Brother QL-700 over USB (Editor Lite light off).</p>
     <button id="connect" type="button">Connect printer</button>
-    <button id="print" type="button" disabled>Print test label</button>
+    <button id="print-test" type="button">Print test label</button>
+
+    <h2>Print a card</h2>
+    <form id="card-form">
+      <input id="card-name" type="search" placeholder="Card name, e.g. Pilot" aria-label="Card name" required>
+      <button type="submit">Preview</button>
+      <button id="print-card" type="button">Print card</button>
+    </form>
+
     <output id="output" aria-live="polite"></output>
+    <canvas id="preview" hidden></canvas>
   </body>
 </html>
