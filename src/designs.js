@@ -5,7 +5,7 @@
 /** @import { ScryfallCard } from "./scryfall/client.js" */
 import { CENTERED } from "./imaging/arrangement.js";
 import { canvasContext, loadFonts } from "./imaging/canvas-text.js";
-import { renderCard, TONES } from "./imaging/card.js";
+import { cardSize, renderCard, TONES } from "./imaging/card.js";
 import { loadImage } from "./imaging/images.js";
 import { layoutMarkers, renderMarkers } from "./imaging/marker-sheet.js";
 import { loadSymbols } from "./imaging/symbols.js";
@@ -104,12 +104,39 @@ export async function renderDesign(design, media) {
 }
 
 /**
+ * How long each label a design prints on is, in dots, without drawing it.
+ * @param {Design} design
+ * @param {Media} media
+ */
+export function labelLengths(design, media) {
+  if (design.type === "markers") {
+    return layoutMarkers(design.counts, media, design.custom).map((page) => page.height);
+  }
+  return [media.printableHeight || cardSize(media).height];
+}
+
+/**
  * How many labels a design prints on, without drawing it.
  * @param {Design} design
  * @param {Media} media
  */
 export function pageCount(design, media) {
-  return design.type === "markers" ? layoutMarkers(design.counts, media, design.custom).length : 1;
+  return labelLengths(design, media).length;
+}
+
+/**
+ * About how much paper labels take on a continuous roll, in millimetres: every copy of every label,
+ * with the blank paper fed at its ends.
+ * @param {readonly { design: Design, copies: number }[]} items
+ * @param {Media} media
+ */
+export function paperLength(items, media) {
+  const margins = 2 * (media.feedMargin ?? 0);
+  let dots = 0;
+  for (const { design, copies } of items) {
+    for (const length of labelLengths(design, media)) dots += copies * (length + margins);
+  }
+  return (dots * 25.4) / media.dpi;
 }
 
 /**
