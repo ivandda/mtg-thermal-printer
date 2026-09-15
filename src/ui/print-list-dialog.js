@@ -3,7 +3,7 @@
 /** @import { Bitmap, Media } from "../printers/types.js" */
 /** @import { LabelSize } from "./label-size.js" */
 import { describeDesign, pageCount, renderDesign } from "../designs.js";
-import { drawBitmap, element, problemMessage } from "./dom.js";
+import { drawBitmap, element, problemMessage, showMessage } from "./dom.js";
 import { preparePrinter } from "./printer-button.js";
 import { bindStepper } from "./stepper.js";
 
@@ -128,7 +128,7 @@ export function createPrintListDialog({ printer, labelSize, printList }) {
     ui.status.textContent = "";
     const advice = await preparePrinter(printer);
     if (printer.state.kind !== "ready") {
-      ui.status.textContent = advice;
+      showMessage(ui.status, advice.text, advice.link);
       return;
     }
 

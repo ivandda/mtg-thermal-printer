@@ -21,9 +21,10 @@ const IN_USE = new DOMException(
  * A connection over fake WebUSB. `allowed` are printers the site may already use, `picked` is what
  * the user chooses in the picker, the first `openFailures` attempts to open the printer fail as if
  * another tab had it, and the printer answers with `replies` in order.
- * @param {{ allowed?: USBDevice[], picked?: USBDevice, openFailures?: number, replies?: Uint8Array[] }} setup
+ * @param {{ allowed?: USBDevice[], picked?: USBDevice, openFailures?: number, openError?: Error, replies?: Uint8Array[] }} setup
+ *   `openError` is how opening fails; another tab using the printer by default.
  */
-function connect({ allowed = [], picked, openFailures = 0, replies = [] }) {
+function connect({ allowed = [], picked, openFailures = 0, openError = IN_USE, replies = [] }) {
   const usb = Object.assign(new EventTarget(), {
     getDevices: async () => allowed,
     requestDevice: async () => {
@@ -51,7 +52,7 @@ function connect({ allowed = [], picked, openFailures = 0, replies = [] }) {
     usb: /** @type {USB} */ (/** @type {unknown} */ (usb)),
     open: async () => {
       opened.count++;
-      if (opened.count <= openFailures) throw IN_USE;
+      if (opened.count <= openFailures) throw openError;
       return transport;
     },
   });
@@ -96,6 +97,21 @@ test("explains when another tab or app is using the printer, and retrying reopen
   await connection.refresh();
   assert.equal(connection.state.kind, "ready");
   assert.equal(opened.count, 2);
+});
+
+test("says when the computer doesn't let the browser open the printer", async () => {
+  const accessDenied = new DOMException(
+    "Failed to execute 'open' on 'USBDevice': Access denied.",
+    "NetworkError",
+  );
+  const { connection } = connect({ allowed: [QL_700], openFailures: 1, openError: accessDenied });
+  await connection.restore();
+  assert.deepEqual(connection.state, {
+    kind: "error",
+    printer: "Brother QL-700",
+    message: "Your computer didn't let the browser open the printer.",
+    blocked: true,
+  });
 });
 
 test("overlapping connection requests open the printer once", async () => {

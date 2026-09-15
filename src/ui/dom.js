@@ -60,3 +60,23 @@ export function problemMessage(error) {
   }
   return error instanceof Error ? error.message : String(error);
 }
+
+/**
+ * Shows a message, followed by a link when there's more help elsewhere.
+ * @param {HTMLElement} target
+ * @param {string} text
+ * @param {{ href: string, text: string }} [link]
+ */
+export function showMessage(target, text, link) {
+  if (!link) {
+    target.textContent = text;
+    return;
+  }
+  const anchor = Object.assign(document.createElement("a"), {
+    href: link.href,
+    textContent: link.text,
+    target: "_blank",
+    rel: "noopener",
+  });
+  target.replaceChildren(text, " ", anchor);
+}

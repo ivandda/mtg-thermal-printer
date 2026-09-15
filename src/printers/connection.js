@@ -3,9 +3,11 @@ import { openUsbPrinter } from "../transport/webusb.js";
 import { driverFor, drivers } from "./index.js";
 
 /**
+ * `blocked`: the computer didn't let the browser open the printer, as Windows does until the
+ * printer uses the WinUSB driver.
  * @typedef {{ kind: "unsupported" | "disconnected" | "connecting" }
  *   | { kind: "ready", printer: string, media: Media }
- *   | { kind: "error", printer: string, message: string }} ConnectionState
+ *   | { kind: "error", printer: string, message: string, blocked?: boolean }} ConnectionState
  */
 
 /**
@@ -120,7 +122,7 @@ export class PrinterConnection extends EventTarget {
     try {
       this.#session = { driver, transport: await this.#openTransport(device) };
     } catch (error) {
-      this.#setState({ kind: "error", printer: driver.name, message: openFailure(error) });
+      this.#setState({ kind: "error", printer: driver.name, ...openFailure(error) });
       return;
     }
     await this.#readStatus();
@@ -152,14 +154,22 @@ export class PrinterConnection extends EventTarget {
 
 /**
  * Explains why a printer couldn't be opened. Browsers report a printer that another tab or program
- * is already using as a failure to claim its USB interface.
+ * is already using as a failure to claim its USB interface, and a printer the system won't let
+ * them open as access denied.
  * @param {unknown} error
+ * @returns {{ message: string, blocked?: boolean }}
  */
 function openFailure(error) {
   if (error instanceof DOMException && /claim/i.test(error.message)) {
-    return "In use by another tab or app. Close it, then try again.";
+    return { message: "In use by another tab or app. Close it, then try again." };
   }
-  return messageOf(error);
+  if (
+    error instanceof DOMException &&
+    (error.name === "SecurityError" || /access denied/i.test(error.message))
+  ) {
+    return { message: "Your computer didn't let the browser open the printer.", blocked: true };
+  }
+  return { message: messageOf(error) };
 }
 
 /** @param {unknown} error */
