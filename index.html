@@ -68,11 +68,18 @@
           </div>
           <p id="library-status" class="library-status" aria-live="polite"></p>
           <ul id="token-list" class="library-list"></ul>
+          <div class="library-footer">
+            <button id="back-up" class="button small" type="button">Back up</button>
+            <button id="restore" class="button small" type="button">Restore a backup</button>
+            <p class="hint">A backup is a file with all your cards and their images, to keep safe or to open in another browser.</p>
+          </div>
         </div>
+        <input id="restore-file" type="file" accept="application/json,.json" hidden>
 
         <div id="card-editor" hidden>
         <div class="editor-head">
           <button id="to-library" class="text-button back-link" type="button">My cards</button>
+          <button id="restore-first" class="text-button" type="button" hidden>Restore a backup</button>
           <p id="save-state" class="save-state"></p>
         </div>
         <form id="token-form" class="token-form" novalidate>

@@ -61,6 +61,19 @@ export const tokenStore = {
     return id;
   },
 
+  /**
+   * @param {string} id
+   * @returns {Promise<Blob | undefined>}
+   */
+  getImage: (id) => run("images", "readonly", (store) => store.get(id)),
+
+  /**
+   * Saves an image under a known ID, e.g. from a backup.
+   * @param {string} id
+   * @param {Blob} image
+   */
+  putImage: (id, image) => run("images", "readwrite", (store) => store.put(image, id)),
+
   /** @returns {Promise<string[]>} */
   imageIds: () => run("images", "readonly", (store) => store.getAllKeys()).then((keys) => keys.map(String)),
 

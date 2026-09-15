@@ -2,6 +2,7 @@
 /** @import { PrintList } from "../print-list.js" */
 /** @import { ScryfallCard } from "../scryfall/client.js" */
 /** @import { LabelSize } from "./label-size.js" */
+import { readBackup, writeBackup } from "../backup.js";
 import { customKind, isBlankToken, renderDesign } from "../designs.js";
 import { CENTERED } from "../imaging/arrangement.js";
 import { prepareImage } from "../imaging/images.js";
@@ -71,6 +72,10 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
     deleteQuestion: element("#delete-question", HTMLElement),
     confirmDelete: element("#confirm-delete", HTMLButtonElement),
     cancelDelete: element("#cancel-delete", HTMLButtonElement),
+    backUp: element("#back-up", HTMLButtonElement),
+    restore: element("#restore", HTMLButtonElement),
+    restoreFirst: element("#restore-first", HTMLButtonElement),
+    restoreFile: element("#restore-file", HTMLInputElement),
   };
 
   /** Saved cards, by name. @type {Token[]} */
@@ -304,6 +309,7 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
   /** @param {boolean} [confirmingDelete] */
   function showActions(confirmingDelete = false) {
     ui.toLibrary.hidden = saved.length === 0;
+    ui.restoreFirst.hidden = saved.length > 0;
     ui.saveState.textContent = !isSaved() ? "" : canSave ? "Saved in this browser" : "Not saved";
     ui.actions.hidden = confirmingDelete || !isSaved();
     ui.deleteConfirm.hidden = !confirmingDelete;
@@ -344,6 +350,88 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
     await tokenStore.delete(deleted.id).catch(() => {});
     releaseImage(deleted.art);
   });
+
+  /* Backups */
+
+  ui.backUp.addEventListener("click", backUp);
+  ui.restore.addEventListener("click", () => ui.restoreFile.click());
+  ui.restoreFirst.addEventListener("click", () => ui.restoreFile.click());
+  ui.restoreFile.addEventListener("change", () => {
+    const [file] = ui.restoreFile.files ?? [];
+    ui.restoreFile.value = "";
+    if (file) restore(file);
+  });
+
+  /** Downloads a file with every saved card and the images added to them. */
+  async function backUp() {
+    saveNow();
+    /** @type {Map<string, import("../backup.js").BackupImage>} */
+    const images = new Map();
+    for (const card of saved) {
+      const id = storedImageOf(card.art);
+      if (!id || images.has(id)) continue;
+      const blob = await tokenStore.getImage(id).catch(() => undefined);
+      if (blob instanceof Blob) {
+        images.set(id, { type: blob.type || "image/webp", bytes: new Uint8Array(await blob.arrayBuffer()) });
+      }
+    }
+    const file = new Blob([writeBackup(saved, images)], { type: "application/json" });
+    const link = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(file),
+      download: `my-cards-${new Date().toISOString().slice(0, 10)}.json`,
+    });
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    ui.libraryStatus.textContent =
+      saved.length === 1 ? "Downloaded a backup of 1 card." : `Downloaded a backup of ${saved.length} cards.`;
+  }
+
+  /**
+   * Adds the cards in a backup to My cards, leaving out the ones already here.
+   * @param {File} file
+   */
+  async function restore(file) {
+    const status = editing ? ui.status : ui.libraryStatus;
+    let backup;
+    try {
+      backup = readBackup(await file.text());
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : String(error);
+      return;
+    }
+    if (!canSave) {
+      status.textContent = "This browser can't save your cards, so the backup can't be restored here.";
+      return;
+    }
+    const added = backup.cards.filter((card) => !saved.some((other) => other.id === card.id));
+    const already = backup.cards.length - added.length;
+    try {
+      for (const card of added) {
+        const id = storedImageOf(card.art);
+        const image = id && backup.images.get(id);
+        if (id && image) await tokenStore.putImage(id, new Blob([image.bytes], { type: image.type }));
+        await tokenStore.save(card);
+        saved = byName([...saved, card]);
+      }
+    } catch {
+      status.textContent = "This browser couldn't save the cards from the backup.";
+      return;
+    }
+    if (saved.length === 0) {
+      status.textContent = "This backup has no cards.";
+      return;
+    }
+    const restored = added.length === 1 ? "Restored 1 card." : `Restored ${added.length} cards.`;
+    const skipped = already === 1 ? "1 was already in My cards." : `${already} were already in My cards.`;
+    showLibrary(
+      added.length === 0
+        ? "Every card in this backup is already in My cards."
+        : already
+          ? `${restored} ${skipped}`
+          : restored,
+    );
+    ui.newToken.focus();
+  }
 
   /** @param {Token[]} tokens */
   const byName = (tokens) => tokens.sort((a, b) => titleOf(a).localeCompare(titleOf(b)));
