@@ -126,6 +126,7 @@ test("a card makes its tokens, emblems and game cards, but not the cards it comb
       { id: "goblin", component: "token", name: "Goblin", type_line: "Token Creature — Goblin" },
       { id: "goblin", component: "token", name: "Goblin", type_line: "Token Creature — Goblin" },
       { id: "monarch", component: "combo_piece", name: "The Monarch", type_line: "Card" },
+      { id: "checklist", component: "combo_piece", name: "Innistrad Checklist", type_line: "Card" },
       { id: "emblem", component: "combo_piece", name: "Krenko Emblem", type_line: "Emblem — Krenko" },
       { id: "undercity", component: "combo_piece", name: "Undercity", type_line: "Dungeon — Undercity" },
       {
