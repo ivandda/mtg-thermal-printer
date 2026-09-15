@@ -670,6 +670,44 @@ select:disabled {
   border-bottom: 1px solid var(--line);
 }
 
+.marker-row .marker-name {
+  margin-right: auto;
+}
+
+.add-marker {
+  display: grid;
+  gap: 0.375rem;
+  max-width: 24rem;
+  margin-top: 0.75rem;
+}
+
+.add-marker label {
+  font-weight: 700;
+}
+
+.add-marker-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-marker input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.custom-status {
+  margin: 0.5rem 0 0;
+}
+
+.custom-status:empty {
+  display: none;
+}
+
 .markers-footer {
   display: grid;
   justify-items: start;

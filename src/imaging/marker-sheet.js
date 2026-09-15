@@ -1,6 +1,6 @@
 /** @import { Marker } from "../markers.js" */
 /** @import { Bitmap, Media } from "../printers/types.js" */
-import { MARKERS } from "../markers.js";
+import { allMarkers } from "../markers.js";
 import { thresholdToBitmap } from "./bitmap.js";
 import { canvasContext, fitLine, font, TEXT_THRESHOLD } from "./canvas-text.js";
 import { parseRules, wrapParagraph } from "./rules-text.js";
@@ -42,9 +42,10 @@ const REMINDER_LINES = 4;
  * inside the circle. Sizes are in dots.
  * @param {Record<string, number>} counts  By marker ID.
  * @param {Media} media
+ * @param {Marker[]} [custom]  Markers typed in, printed after the keywords.
  * @returns {MarkerPage[]}
  */
-export function layoutMarkers(counts, media) {
+export function layoutMarkers(counts, media, custom = []) {
   const dotsPerMm = media.dpi / 25.4;
   const side = Math.floor(media.printableWidth / Math.SQRT2);
   const round = media.shape === "round";
@@ -60,9 +61,9 @@ export function layoutMarkers(counts, media) {
     const unit = dotsPerMm * Math.min(1, frame.width / (size.width * dotsPerMm));
     const height = Math.floor(size.height * unit);
     const perRow = Math.max(1, Math.floor(frame.width / (size.width * unit)));
-    const markers = MARKERS.filter((marker) => marker.kind === kind).flatMap((marker) =>
-      Array.from({ length: counts[marker.id] ?? 0 }, () => ({ marker, unit, height })),
-    );
+    const markers = allMarkers(custom)
+      .filter((marker) => marker.kind === kind)
+      .flatMap((marker) => Array.from({ length: counts[marker.id] ?? 0 }, () => ({ marker, unit, height })));
     for (let start = 0; start < markers.length; start += perRow)
       rows.push(markers.slice(start, start + perRow));
   }
@@ -104,11 +105,12 @@ export function layoutMarkers(counts, media) {
  * Draws markers on as many labels as they need, with a thin line to cut along between neighbours.
  * @param {Record<string, number>} counts
  * @param {Media} media
+ * @param {Marker[]} [custom]
  * @returns {Bitmap[]}
  */
-export function renderMarkers(counts, media) {
+export function renderMarkers(counts, media, custom = []) {
   const round = media.shape === "round";
-  return layoutMarkers(counts, media).map(({ height, area, markers }) => {
+  return layoutMarkers(counts, media, custom).map(({ height, area, markers }) => {
     const context = canvasContext(media.printableWidth, height);
     context.fillStyle = "white";
     context.fillRect(0, 0, media.printableWidth, height);

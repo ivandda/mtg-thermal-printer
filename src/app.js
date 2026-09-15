@@ -38,8 +38,8 @@ const tokens = createTokenEditor({
   onPreview: views.openLabel,
 });
 const markers = createMarkersPicker({
-  onChange(counts) {
-    if (document.body.dataset.mode === "markers") panel.showMarkers(counts);
+  onChange(selection) {
+    if (document.body.dataset.mode === "markers") panel.showMarkers(selection);
   },
   onPreview: views.openLabel,
 });
