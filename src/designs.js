@@ -3,12 +3,12 @@
 /** @import { Bitmap, Media } from "./printers/types.js" */
 /** @import { ScryfallCard } from "./scryfall/client.js" */
 import { CENTERED } from "./imaging/arrangement.js";
-import { loadFonts } from "./imaging/canvas-text.js";
+import { canvasContext, loadFonts } from "./imaging/canvas-text.js";
 import { renderCard, TONES } from "./imaging/card.js";
 import { loadImage } from "./imaging/images.js";
 import { layoutMarkers, renderMarkers } from "./imaging/marker-sheet.js";
 import { loadSymbols } from "./imaging/symbols.js";
-import { layoutTextCard, renderTextCard } from "./imaging/text-card.js";
+import { layoutTextCard, renderTextCard, textMeasure } from "./imaging/text-card.js";
 import { MARKERS } from "./markers.js";
 import { cardFaces, cardText, imageUrl } from "./scryfall/client.js";
 import { loadStoredImage } from "./token-store.js";
@@ -129,13 +129,15 @@ export function loadArt(art) {
 }
 
 /**
- * Where a token's image goes on the label, so it can be arranged there.
+ * Where a token's image goes on the label, so it can be arranged there. Call it once the design has
+ * been drawn, so the typeface is loaded and text is measured as it was drawn.
  * @param {Design} design
  * @param {Media} media
  */
 export function artBoxOf(design, media) {
   if (design.type !== "token" || !design.art) return undefined;
-  return layoutTextCard({ rules: design.rules, stats: statsOf(design), hasArt: true }, media).art;
+  const measure = textMeasure(canvasContext(1, 1));
+  return layoutTextCard({ rules: design.rules, stats: statsOf(design), hasArt: true }, media, measure).art;
 }
 
 /**

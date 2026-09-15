@@ -80,9 +80,19 @@ export function fitRules(paragraphs, box, measure, space) {
     const wrapped = paragraphs.map((paragraph) =>
       wrapParagraph(paragraph, box.width, (word) => measure(word, size), space(size)),
     );
-    const lines = wrapped.reduce((count, paragraph) => count + paragraph.length, 0);
-    const height = size * box.lineHeight * (lines + Math.max(0, wrapped.length - 1) / 2);
+    const height = textHeight(wrapped, size, box.lineHeight);
     if (height <= box.height || size <= box.smallest) return { size, paragraphs: wrapped };
     size = Math.max(box.smallest, size - 1);
   }
+}
+
+/**
+ * How tall wrapped paragraphs are, with half a line between paragraphs.
+ * @param {Line[][]} paragraphs
+ * @param {number} size
+ * @param {number} lineHeight  A multiple of the text size.
+ */
+export function textHeight(paragraphs, size, lineHeight) {
+  const lines = paragraphs.reduce((count, paragraph) => count + paragraph.length, 0);
+  return size * lineHeight * (lines + Math.max(0, paragraphs.length - 1) / 2);
 }
