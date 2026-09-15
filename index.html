@@ -178,8 +178,13 @@
         </form>
         <p id="deck-status" class="results-status" aria-live="polite"></p>
         <p id="deck-missing" class="deck-missing" hidden></p>
+        <fieldset id="deck-view" class="segmented deck-view" hidden>
+          <legend class="visually-hidden">Show</legend>
+          <label><input type="radio" name="deck-view" value="cards" checked><span id="deck-view-cards">Cards</span></label>
+          <label><input type="radio" name="deck-view" value="tokens"><span id="deck-view-tokens">Tokens</span></label>
+        </fieldset>
         <section id="deck-cards" class="deck-group" aria-labelledby="deck-cards-title" hidden>
-          <h3 id="deck-cards-title">Cards</h3>
+          <h3 id="deck-cards-title" class="visually-hidden">Cards</h3>
           <label id="basics-option" class="checkbox">
             <input id="include-basics" name="include-basics" type="checkbox">
             <span id="basics-label">Include basic lands</span>
@@ -191,7 +196,7 @@
           </div>
         </section>
         <section id="deck-tokens-group" class="deck-group" aria-labelledby="deck-tokens-title" hidden>
-          <h3 id="deck-tokens-title">Tokens</h3>
+          <h3 id="deck-tokens-title" class="visually-hidden">Tokens</h3>
           <div class="deck-actions">
             <button id="add-deck-tokens" class="button" type="button">Add all tokens to the print list</button>
             <p id="deck-tokens-added" class="hint" aria-live="polite"></p>
