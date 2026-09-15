@@ -424,10 +424,6 @@ select:disabled {
   max-width: 34rem;
 }
 
-.my-tokens {
-  margin-bottom: 1.75rem;
-}
-
 .section-head {
   display: flex;
   align-items: center;
@@ -441,19 +437,82 @@ select:disabled {
   font-size: 1.125rem;
 }
 
-.token-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.library-status {
+  margin: 0 0 0.75rem;
+}
+
+.library-status:empty {
+  display: none;
+}
+
+.library-list {
   margin: 0;
   padding: 0;
+  border-top: 1px solid var(--line);
   list-style: none;
 }
 
-.token-list [aria-pressed="true"] {
-  border-color: var(--text);
-  background: var(--text);
-  color: var(--desk);
+.library-item {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.75rem 0.5rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  text-align: start;
+  cursor: pointer;
+}
+
+.library-item canvas {
+  width: 100%;
+  height: auto;
+  border-radius: 2px;
+  background: var(--paper);
+}
+
+.library-name {
+  display: block;
+  font-weight: 700;
+}
+
+.library-detail {
+  display: block;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+@media (hover: hover) {
+  .library-item:hover {
+    background: var(--surface);
+  }
+}
+
+.editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.back-link {
+  min-height: 2.5rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.back-link::before {
+  content: "‹ " / "";
+}
+
+.save-state {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
 }
 
 .token-form {
@@ -556,20 +615,21 @@ select:disabled {
 }
 
 .token-footer {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.token-footer:has(> :not([hidden])) {
+  display: block;
+}
+
+.token-footer:not(:has(> :not([hidden]))) {
+  display: none;
+}
+
+.editor-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.token-footer .text-button {
-  min-height: 2.5rem;
-  color: var(--muted);
-}
-
-.delete-confirm {
-  display: flex;
   align-items: center;
   gap: 0.5rem;
 }

@@ -135,11 +135,21 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
 
   /** Goes back to the chosen card, if there is one, after making a token. */
   function showCards() {
-    state.source = "card";
     if (state.card) {
+      state.source = "card";
       showPrinting();
       return;
     }
+    showEmpty("card");
+  }
+
+  /**
+   * A blank label, before a card is picked or while My cards is shown.
+   * @param {"card" | "token"} source
+   */
+  function showEmpty(source) {
+    state.source = source;
+    state.token = undefined;
     renderId++;
     state.page = undefined;
     state.pages = [];
@@ -222,8 +232,12 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
 
   /* Tokens */
 
-  /** @param {Token} token */
+  /** @param {Token | undefined} token  None while My cards is shown. */
   function showToken(token) {
+    if (!token) {
+      showEmpty("token");
+      return;
+    }
     const sameToken = state.source === "token" && state.token?.id === token.id;
     state.source = "token";
     state.token = token;

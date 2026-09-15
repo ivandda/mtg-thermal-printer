@@ -31,6 +31,7 @@ const panel = createLabelPanel({
 });
 const tokens = createTokenEditor({
   printList,
+  labelSize,
   onShow(token) {
     if (document.body.dataset.mode === "create") panel.showToken(token);
   },
