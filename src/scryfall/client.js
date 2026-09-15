@@ -17,7 +17,18 @@
  *   border_color?: string,
  *   image_uris?: ImageUris,
  *   card_faces?: CardFace[],
+ *   all_parts?: RelatedCard[],
  * }} ScryfallCard
+ */
+
+/**
+ * A card related to another, such as a token it makes (https://scryfall.com/docs/api/cards#related-card-objects).
+ * @typedef {{ id: string, component: string, name: string, type_line: string }} RelatedCard
+ */
+
+/**
+ * A card to look up in a collection request: by Scryfall ID, by name, or by name or number in a set.
+ * @typedef {{ id: string } | { name: string, set?: string } | { set: string, collector_number: string }} CardIdentifier
  */
 
 /**
@@ -47,6 +58,8 @@ const CARD_INTERVAL_MS = 500;
 const DEFAULT_INTERVAL_MS = 100;
 const RATE_LIMIT_PAUSE_MS = 30_000;
 const CACHE_SIZE = 50;
+/** The most cards Scryfall looks up in one collection request. */
+const COLLECTION_SIZE = 75;
 
 export class ScryfallError extends Error {
   /**
@@ -76,18 +89,22 @@ export function createScryfallClient({
   let queue = Promise.resolve();
   let lastRequestAt = Number.NEGATIVE_INFINITY;
 
-  /** @param {string} path */
-  function get(path) {
-    const cached = cache.get(path);
+  /**
+   * @param {string} path
+   * @param {object} [body]  Sent as JSON in a POST request.
+   */
+  function get(path, body) {
+    const key = body ? `${path} ${JSON.stringify(body)}` : path;
+    const cached = cache.get(key);
     if (cached) return cached;
 
-    const response = queue.then(() => send(path));
+    const response = queue.then(() => send(path, body));
     queue = response.then(
       () => {},
       () => {},
     );
-    cache.set(path, response);
-    response.catch(() => cache.delete(path));
+    cache.set(key, response);
+    response.catch(() => cache.delete(key));
     const oldest = cache.keys().next().value;
     if (cache.size > CACHE_SIZE && oldest !== undefined) cache.delete(oldest);
     return response;
@@ -95,27 +112,36 @@ export function createScryfallClient({
 
   /**
    * @param {string} path
+   * @param {object} [body]
    * @param {boolean} [retried]
    * @returns {Promise<any>}
    */
-  async function send(path, retried = false) {
+  async function send(path, body, retried = false) {
     const interval = CARD_ENDPOINT.test(path) ? CARD_INTERVAL_MS : DEFAULT_INTERVAL_MS;
     await wait(Math.max(0, lastRequestAt + interval - now()));
     lastRequestAt = now();
 
-    const response = await fetch(`${API_URL}${path}`, { headers: { Accept: "application/json" } });
+    /** @type {RequestInit} */
+    const request = body
+      ? {
+          method: "POST",
+          headers: { Accept: "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      : { headers: { Accept: "application/json" } };
+    const response = await fetch(`${API_URL}${path}`, request);
     if (response.status === 429 && !retried) {
       await wait(RATE_LIMIT_PAUSE_MS);
-      return send(path, true);
+      return send(path, body, true);
     }
-    const body = await response.json().catch(() => ({}));
+    const reply = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new ScryfallError(
-        body.details ?? `Scryfall request failed (${response.status})`,
+        reply.details ?? `Scryfall request failed (${response.status})`,
         response.status,
       );
     }
-    return body;
+    return reply;
   }
 
   return {
@@ -143,7 +169,47 @@ export function createScryfallClient({
      * @returns {Promise<ScryfallCard>}
      */
     card: (id) => get(`/cards/${encodeURIComponent(id)}`),
+
+    /**
+     * Many cards at once, in as few requests as Scryfall allows. Cards come back in the order asked
+     * for; the identifiers of cards Scryfall doesn't have come back in `notFound`.
+     * @param {CardIdentifier[]} identifiers
+     * @returns {Promise<{ cards: ScryfallCard[], notFound: CardIdentifier[] }>}
+     */
+    async collection(identifiers) {
+      /** @type {ScryfallCard[]} */
+      const cards = [];
+      /** @type {CardIdentifier[]} */
+      const notFound = [];
+      for (let start = 0; start < identifiers.length; start += COLLECTION_SIZE) {
+        const reply = await get("/cards/collection", {
+          identifiers: identifiers.slice(start, start + COLLECTION_SIZE),
+        });
+        cards.push(...reply.data);
+        notFound.push(...(reply.not_found ?? []));
+      }
+      return { cards, notFound };
+    },
   };
+}
+
+/** Related cards that aren't tokens but are printed like them: emblems, dungeons and cards like The Monarch. */
+const TOKEN_LIKE = /^(Emblem|Dungeon|Card)\b/;
+
+/**
+ * The tokens, emblems and game cards a card makes, once each. Other cards it's related to, such as
+ * the cards it melds or combos with, are left out.
+ * @param {ScryfallCard} card
+ * @returns {RelatedCard[]}
+ */
+export function madeBy(card) {
+  const parts = (card.all_parts ?? []).filter(
+    (part) =>
+      part.id !== card.id &&
+      part.name !== card.name &&
+      (part.component === "token" || TOKEN_LIKE.test(part.type_line)),
+  );
+  return [...new Map(parts.map((part) => [part.id, part])).values()];
 }
 
 /**
