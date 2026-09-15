@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MTG Thermal Printer · printer test</title>
+    <style>
+      body { font: 16px/1.5 system-ui, sans-serif; max-width: 36rem; margin: 3rem auto; padding: 0 1rem; }
+      button { font: inherit; padding: 0.5rem 1rem; margin-right: 0.5rem; }
+      output { display: block; margin-top: 1rem; }
+    </style>
+    <script type="module" src="src/printer-test.js"></script>
+  </head>
+  <body>
+    <h1>Printer test</h1>
+    <p>Connect a Brother QL-700 over USB (Editor Lite light off) and print a test label.</p>
+    <button id="connect" type="button">Connect printer</button>
+    <button id="print" type="button" disabled>Print test label</button>
+    <output id="output" aria-live="polite"></output>
+  </body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "mtg-thermal-printer",
+  "private": true,
+  "description": "Search Magic: The Gathering cards and print them on a thermal label printer, right from the browser.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "lint": "biome check",
+    "format": "biome check --write",
+    "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "@types/node": "26.5.1",
+    "@types/w3c-web-usb": "1.0.14",
+    "typescript": "7.0.2"
+  }
+}
