@@ -18,7 +18,7 @@ import {
 import { cardSize } from "../imaging/card.js";
 import { markerTotal } from "../markers.js";
 import { clampCopies } from "../print-list.js";
-import { cardFaces, pickCard } from "../scryfall/client.js";
+import { cardFaces, madeBy, pickCard } from "../scryfall/client.js";
 import { updateAddress } from "./address.js";
 import { bindArtArranger } from "./art-arranger.js";
 import { cardThumbnail, drawBitmap, element, problemMessage, showMessage } from "./dom.js";
@@ -53,6 +53,8 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     cardSet: element("#card-set", HTMLElement),
     customize: element("#customize", HTMLButtonElement),
     printings: element("#printings", HTMLElement),
+    related: element("#related", HTMLElement),
+    relatedList: element("#related-list", HTMLUListElement),
     controls: element("#controls", HTMLFormElement),
     facesField: element("#faces-field", HTMLFieldSetElement),
     faces: element("#faces", HTMLElement),
@@ -94,6 +96,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     printing: false,
   };
   let renderId = 0;
+  let relatedId = 0;
   let arrangeFrame = 0;
 
   const darkness = () => /** @type {Darkness} */ (darknessChoice.value || "normal");
@@ -135,6 +138,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     ui.status.textContent = "";
     showPrinting();
     loadPrintings(card);
+    loadRelated(card);
   }
 
   /** Goes back to the chosen card, if there is one, after making a token. */
@@ -181,6 +185,43 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     } catch {
       // Other printings are optional: the card that was picked can still be printed.
     }
+  }
+
+  /**
+   * Lists the tokens, emblems and game cards the card makes, so they can be opened from here.
+   * @param {ScryfallCard} card
+   */
+  async function loadRelated(card) {
+    const id = ++relatedId;
+    ui.relatedList.replaceChildren();
+    showOptions();
+    const parts = madeBy(card);
+    if (parts.length === 0) return;
+    try {
+      const { cards } = await scryfall.collection(parts.map((part) => ({ id: part.id })));
+      if (id !== relatedId) return;
+      ui.relatedList.replaceChildren(...cards.map(relatedItem));
+      showOptions();
+    } catch {
+      // The card prints without them.
+    }
+  }
+
+  /** @param {ScryfallCard} related */
+  function relatedItem(related) {
+    const button = Object.assign(document.createElement("button"), { type: "button" });
+    if (related.type_line) button.title = related.type_line;
+    button.append(
+      cardThumbnail(related, "small", "related-image"),
+      Object.assign(document.createElement("span"), { className: "related-name", textContent: related.name }),
+    );
+    button.addEventListener("click", () => {
+      showCard(related);
+      ui.cardName.focus();
+    });
+    const item = document.createElement("li");
+    item.append(button);
+    return item;
   }
 
   /** @param {ScryfallCard} printing */
@@ -310,6 +351,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     const hasArt = source === "token" ? Boolean(state.token?.art) : card && (!text || ui.includeArt.checked);
     ui.customize.hidden = !card || !state.card;
     ui.printings.hidden = !card;
+    ui.related.hidden = !card || ui.relatedList.childElementCount === 0;
     ui.facesField.hidden = !card || !state.card || cardFaces(state.card).length < 2;
     ui.styleField.hidden = !card;
     ui.borderOption.hidden = !card || text;

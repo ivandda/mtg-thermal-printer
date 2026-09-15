@@ -953,6 +953,52 @@ body:not([data-mode="markers"]) .markers {
   opacity: 1;
 }
 
+/* Tokens the card makes */
+
+.related h3 {
+  margin: 0 0 0.375rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.related-list {
+  display: flex;
+  scrollbar-width: thin;
+  gap: 0.75rem;
+  margin: -4px;
+  padding: 4px 4px 8px;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.related-list button {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  width: 4.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: start;
+  cursor: pointer;
+}
+
+.related-image {
+  width: 100%;
+  aspect-ratio: 146 / 204;
+  border-radius: 4.75% / 3.4%;
+  background: var(--line);
+}
+
+.related-name {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 /* Print controls */
 
 .controls,
