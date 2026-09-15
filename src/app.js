@@ -4,9 +4,11 @@ import { createScryfallClient, ScryfallError } from "./scryfall/client.js";
 import { addressParam, updateAddress } from "./ui/address.js";
 import { createLabelPanel } from "./ui/label-panel.js";
 import { LabelSize } from "./ui/label-size.js";
+import { createModes } from "./ui/modes.js";
 import { createPrintListDialog } from "./ui/print-list-dialog.js";
 import { bindPrinterButton } from "./ui/printer-button.js";
 import { createSearch } from "./ui/search.js";
+import { createTokenEditor } from "./ui/token-editor.js";
 import { createViews } from "./ui/views.js";
 
 const scryfall = createScryfallClient();
@@ -14,8 +16,28 @@ const printer = new PrinterConnection();
 const labelSize = new LabelSize(printer);
 const printList = new PrintList();
 
-const panel = createLabelPanel({ scryfall, printer, labelSize, printList });
 const views = createViews();
+const panel = createLabelPanel({
+  scryfall,
+  printer,
+  labelSize,
+  printList,
+  onTokenChange: (token) => tokens.update(token),
+  onCustomize(card, face) {
+    tokens.createFrom(card, face);
+    modes.show("create");
+  },
+});
+const tokens = createTokenEditor({
+  printList,
+  onShow(token) {
+    if (document.body.dataset.mode === "create") panel.showToken(token);
+  },
+  onPreview: views.openLabel,
+});
+const modes = createModes((mode) =>
+  mode === "create" ? panel.showToken(tokens.current()) : panel.showCards(),
+);
 const search = createSearch({
   scryfall,
   onSelect(card) {
@@ -27,7 +49,7 @@ createPrintListDialog({ printer, labelSize, printList });
 bindPrinterButton(printer, panel.showStatus);
 
 printer.restore();
-openLinkedCard();
+if (document.body.dataset.mode !== "create") openLinkedCard();
 
 /** Opens the card a shared or bookmarked address points to. */
 async function openLinkedCard() {

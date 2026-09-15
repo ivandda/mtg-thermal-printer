@@ -57,7 +57,7 @@ export function createSearch({ scryfall, onSelect }) {
 
   document.addEventListener("keydown", (event) => {
     const typing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
-    if (event.key !== "/" || typing) return;
+    if (event.key !== "/" || typing || document.body.dataset.mode === "create") return;
     event.preventDefault();
     ui.query.focus();
   });

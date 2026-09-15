@@ -211,11 +211,15 @@ export function cardText(card, face) {
 
 /** @param {CardText & { name: string }} source */
 function textOf(source) {
+  const power = source.power ?? "";
+  const toughness = source.toughness ?? "";
   return {
     name: source.name,
     manaCost: source.mana_cost ?? "",
     typeLine: source.type_line ?? "",
     rules: source.oracle_text ?? "",
-    stats: source.power ? `${source.power}/${source.toughness}` : (source.loyalty ?? ""),
+    power,
+    toughness,
+    stats: power ? `${power}/${toughness}` : (source.loyalty ?? ""),
   };
 }
