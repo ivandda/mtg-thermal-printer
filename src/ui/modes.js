@@ -1,14 +1,19 @@
 import { addressParam, updateAddress } from "./address.js";
 import { element } from "./dom.js";
 
-/** @typedef {"find" | "create" | "markers"} Mode */
+/** @typedef {"find" | "create" | "markers" | "deck"} Mode */
 
 /** @type {Record<Mode, string>} */
-const BACK_LABELS = { find: "Back to results", create: "Back to the card", markers: "Back to the markers" };
+const BACK_LABELS = {
+  find: "Back to results",
+  create: "Back to the card",
+  markers: "Back to the markers",
+  deck: "Back to the deck",
+};
 
 /**
- * The tabs that switch between finding a card, creating one and picking markers. The choice is
- * kept in the address.
+ * The tabs that switch between finding a card, creating one, picking markers and finding a deck's
+ * tokens. The choice is kept in the address.
  * @param {(mode: Mode) => void} onChange
  */
 export function createModes(onChange) {
@@ -38,7 +43,7 @@ export function createModes(onChange) {
   addEventListener("popstate", rememberMode);
 
   const linked = addressParam("mode");
-  if (linked === "create" || linked === "markers") show(linked);
+  if (linked === "create" || linked === "markers" || linked === "deck") show(linked);
 
   return { show };
 }

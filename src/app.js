@@ -2,6 +2,7 @@ import { PrintList } from "./print-list.js";
 import { PrinterConnection } from "./printers/connection.js";
 import { createScryfallClient, ScryfallError } from "./scryfall/client.js";
 import { addressParam, updateAddress } from "./ui/address.js";
+import { createDeck } from "./ui/deck.js";
 import { createLabelPanel } from "./ui/label-panel.js";
 import { LabelSize } from "./ui/label-size.js";
 import { createMarkersPicker } from "./ui/markers-picker.js";
@@ -50,6 +51,14 @@ const modes = createModes((mode) => {
 });
 const search = createSearch({
   scryfall,
+  onSelect(card) {
+    panel.showCard(card);
+    views.openLabel();
+  },
+});
+createDeck({
+  scryfall,
+  printList,
   onSelect(card) {
     panel.showCard(card);
     views.openLabel();

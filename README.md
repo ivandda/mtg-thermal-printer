@@ -11,6 +11,7 @@ Search Magic: The Gathering cards and tokens and print them as stickers on a the
 - **Print as image or text**: large rules text with mana symbols, art optional.
 - **Create your own** cards and tokens, or customize any card. Saved in your browser, with backup to a file.
 - **Print markers**: The Monarch, Day and Night, trackers, keywords or your own, packed onto few labels.
+- **Tokens for a deck**: paste a decklist to see every token, emblem and game card it makes, and add them all to the print list.
 - **Print list**: queue labels with their own options and copies, and print them at once.
 - **Share** a card by its link, including cards you made (text and Scryfall art).
 

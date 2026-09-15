@@ -29,6 +29,7 @@
         <label><input type="radio" name="mode" value="find" checked><span class="tab">Find cards</span></label>
         <label><input type="radio" name="mode" value="create"><span class="tab">Create</span></label>
         <label><input type="radio" name="mode" value="markers"><span class="tab">Markers</span></label>
+        <label><input type="radio" name="mode" value="deck"><span class="tab">Deck</span></label>
       </fieldset>
 
       <section class="browse" aria-label="Find a card">
@@ -166,6 +167,22 @@
           <button id="preview-markers" class="print preview-button" type="button">Preview and print</button>
           <button id="clear-markers" class="text-button" type="button" hidden>Clear all</button>
         </div>
+      </section>
+
+      <section class="deck" aria-label="Tokens for a deck">
+        <form id="deck-form" class="deck-form" novalidate>
+          <label for="decklist">Decklist</label>
+          <textarea id="decklist" rows="8" spellcheck="false" autocomplete="off" aria-describedby="decklist-hint" placeholder="4 Krenko, Mob Boss&#10;1 Dockside Extortionist&#10;1 Palace Jailer"></textarea>
+          <p id="decklist-hint" class="hint">Paste a list exported from Arena, MTGO, Moxfield or another deck site, with one card on each line.</p>
+          <button id="find-deck-tokens" class="button" type="submit">Find tokens</button>
+        </form>
+        <p id="deck-status" class="results-status" aria-live="polite"></p>
+        <p id="deck-missing" class="deck-missing" hidden></p>
+        <div id="deck-actions" class="deck-actions" hidden>
+          <button id="add-deck-tokens" class="button" type="button">Add all to the print list</button>
+          <p id="deck-added" class="hint" aria-live="polite"></p>
+        </div>
+        <ul id="deck-tokens" class="results"></ul>
       </section>
       </div>
 
