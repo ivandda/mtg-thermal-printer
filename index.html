@@ -297,7 +297,9 @@
         </form>
 
         <div class="print-bar">
+          <p id="editing-note" class="hint editing-note" hidden>Changing a label in the print list.</p>
           <div class="print-actions">
+            <button id="cancel-edit" class="button" type="button" hidden>Cancel</button>
             <button id="add-to-list" class="button" type="button" disabled>Add to list</button>
             <button id="print" class="print" type="submit" form="controls" disabled>Print label</button>
           </div>
@@ -369,7 +371,10 @@
             <input type="number" inputmode="numeric" min="1" max="20" aria-label="Copies">
             <button type="button" data-step="1" aria-label="One more copy">+</button>
           </div>
-          <button class="remove" type="button">Remove</button>
+          <div class="list-buttons">
+            <button class="edit" type="button">Edit</button>
+            <button class="remove" type="button">Remove</button>
+          </div>
         </div>
       </li>
     </template>

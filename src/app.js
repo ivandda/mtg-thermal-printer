@@ -1,3 +1,5 @@
+/** @import { MarkerSelection } from "./markers.js" */
+import { tokenOf } from "./designs.js";
 import { PrintList } from "./print-list.js";
 import { PrinterConnection } from "./printers/connection.js";
 import { createScryfallClient, ScryfallError } from "./scryfall/client.js";
@@ -19,6 +21,10 @@ const labelSize = new LabelSize(printer);
 const printList = new PrintList();
 
 const views = createViews();
+/** The Markers tab's own selection, put back if changing a marker sheet is cancelled.
+ * @type {MarkerSelection | undefined} */
+let markersBeforeEdit;
+
 const panel = createLabelPanel({
   scryfall,
   printer,
@@ -28,6 +34,11 @@ const panel = createLabelPanel({
   onCustomize(card, face) {
     tokens.createFrom(card, face);
     modes.show("create");
+  },
+  onEditEnd(saved, id) {
+    if (!saved && markersBeforeEdit) markers.show(markersBeforeEdit);
+    markersBeforeEdit = undefined;
+    list.open(id, saved ? "Changes saved." : undefined);
   },
 });
 const tokens = createTokenEditor({
@@ -64,7 +75,25 @@ createDeck({
     views.openLabel();
   },
 });
-createPrintListDialog({ printer, labelSize, printList });
+const list = createPrintListDialog({
+  printer,
+  labelSize,
+  printList,
+  onEdit({ design, ...item }) {
+    if (design.type === "token") {
+      modes.show("create");
+      tokens.show(tokenOf(design));
+    } else if (design.type === "markers") {
+      markersBeforeEdit = markers.current();
+      modes.show("markers");
+      markers.show({ counts: design.counts, custom: design.custom ?? [] });
+    } else {
+      modes.show("find");
+    }
+    panel.editItem({ ...item, design });
+    views.openLabel();
+  },
+});
 bindPrinterButton(printer, panel.showStatus);
 
 printer.restore();

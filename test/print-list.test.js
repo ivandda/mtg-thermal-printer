@@ -31,6 +31,23 @@ const TREASURE = {
   cropBorder: false,
 };
 
+test("a label can be changed in place, keeping its order", () => {
+  const list = new PrintList(memoryStorage());
+  list.add(TREASURE, 1);
+  list.add({ ...TREASURE, darkness: "darker" }, 2);
+  const [first, second] = list.items;
+  list.replace(first.id, { ...TREASURE, cropBorder: true }, 5);
+  assert.deepEqual(
+    list.items.map((item) => [item.id, item.copies, item.design]),
+    [
+      [first.id, 5, { ...TREASURE, cropBorder: true }],
+      [second.id, 2, { ...TREASURE, darkness: "darker" }],
+    ],
+  );
+  list.replace("gone", TREASURE, 1);
+  assert.equal(list.items.length, 2);
+});
+
 test("saved labels come back on the next visit", () => {
   const storage = memoryStorage();
   new PrintList(storage).add(TREASURE, 3);

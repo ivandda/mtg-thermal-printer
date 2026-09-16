@@ -40,6 +40,18 @@ export class PrintList extends EventTarget {
     this.#update([...this.items, { id: crypto.randomUUID(), design, copies: clampCopies(copies) }]);
   }
 
+  /**
+   * Changes a label already in the list, keeping its place.
+   * @param {string} id
+   * @param {Design} design
+   * @param {number} copies
+   */
+  replace(id, design, copies) {
+    this.#update(
+      this.items.map((item) => (item.id === id ? { ...item, design, copies: clampCopies(copies) } : item)),
+    );
+  }
+
   /** @param {string} id */
   remove(id) {
     this.#update(this.items.filter((item) => item.id !== id));

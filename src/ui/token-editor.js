@@ -533,6 +533,14 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
     },
 
     /**
+     * Opens a card in the editor, such as one from the print list, saved here or not.
+     * @param {Token} next
+     */
+    show(next) {
+      edit(next);
+    },
+
+    /**
      * Starts a new card from a Scryfall card's text and art.
      * @param {ScryfallCard} card
      * @param {number} face

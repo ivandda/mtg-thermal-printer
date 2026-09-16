@@ -56,6 +56,15 @@ import { loadStoredImage } from "./token-store.js";
 /** @typedef {Token & { type: "token", darkness: Darkness }} TokenDesign */
 
 /**
+ * The custom card inside a label's design, without how the label prints it.
+ * @param {TokenDesign} design
+ * @returns {Token}
+ */
+export function tokenOf({ id, name, manaCost, typeLine, power, toughness, rules, art }) {
+  return { id, name, manaCost, typeLine, power, toughness, rules, art };
+}
+
+/**
  * Markers packed onto as few labels as they need. `custom` has the markers typed in that are counted.
  * @typedef {{ type: "markers", counts: Record<string, number>, custom?: Marker[] }} MarkersDesign
  */

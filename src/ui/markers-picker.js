@@ -140,6 +140,24 @@ export function createMarkersPicker({ onChange, onPreview }) {
     onChange(selection());
   }
 
+  /**
+   * Shows a marker sheet from the print list, adding any markers typed in that it needs.
+   * @param {MarkerSelection} selection
+   */
+  function show({ counts: next, custom: theirs = [] }) {
+    const extra = theirs.filter((marker) => !custom.some((other) => other.id === marker.id));
+    if (extra.length > 0) {
+      custom = [...custom, ...extra].slice(0, MAX_CUSTOM);
+      showCustom();
+    }
+    counts = markerCounts(next, custom);
+    for (const [id, input] of inputs) input.value = String(counts[id] ?? 0);
+    writeSetting("markers", counts);
+    writeSetting("customMarkers", custom);
+    ui.clear.hidden = markerTotal(counts) === 0;
+    onChange(selection());
+  }
+
   ui.clear.addEventListener("click", () => {
     for (const input of inputs.values()) input.value = "0";
     update({});
@@ -149,5 +167,5 @@ export function createMarkersPicker({ onChange, onPreview }) {
   showCustom();
   ui.clear.hidden = markerTotal(counts) === 0;
 
-  return { current: selection };
+  return { current: selection, show };
 }
