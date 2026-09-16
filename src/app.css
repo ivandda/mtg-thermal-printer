@@ -108,6 +108,13 @@ canvas {
   padding: 0 0.75rem;
 }
 
+.button.primary {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--desk);
+  font-weight: 700;
+}
+
 @media (hover: hover) {
   .button:hover,
   .segmented label:hover span,

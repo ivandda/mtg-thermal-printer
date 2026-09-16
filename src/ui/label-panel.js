@@ -503,7 +503,7 @@ export function createLabelPanel({
 
   async function printLabel() {
     const current = design();
-    if (!current || state.printing) return;
+    if (!current || state.printing || state.editing) return;
     ui.status.textContent = "";
     const advice = await preparePrinter(printer);
     if (printer.state.kind !== "ready") {
@@ -586,6 +586,9 @@ export function createLabelPanel({
     ui.editingScreen.hidden = !editing;
     ui.cancelEdit.hidden = !editing;
     ui.addToList.textContent = editing ? "Save changes" : "Add to list";
+    ui.addToList.classList.toggle("primary", editing);
+    // Printing isn't what this screen is for, so Print gives way to Cancel and Save changes.
+    ui.print.hidden = editing;
     const nothingToPrint = {
       card: !state.card,
       token: !state.token || isBlankToken(state.token),
