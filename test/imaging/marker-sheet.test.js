@@ -76,3 +76,21 @@ test("markers typed in print in the keyword rows, after the catalogue's", () => 
   );
   assert.equal(page.markers[0].y, page.markers[1].y);
 });
+
+test("markers on a continuous roll are cut into strips the printer can take", () => {
+  const roll = media("62");
+  const counts = { monarch: 20, initiative: 20, "citys-blessing": 20, day: 20, night: 20, ring: 20 };
+  const pages = layoutMarkers(counts, roll);
+  assert.ok(pages.length > 1, `expected several strips, got ${pages.length}`);
+  // 11811 dots is the shortest maximum any supported printer takes; a strip stays well inside it.
+  for (const page of pages) {
+    assert.ok(page.height <= 3543, `a strip of ${page.height} dots is too long`);
+  }
+  const placed = pages.reduce((total, page) => total + page.markers.length, 0);
+  assert.equal(placed, 120);
+  // Each strip starts at the top and its markers stay inside it.
+  for (const page of pages) {
+    assert.equal(Math.min(...page.markers.map(({ y }) => y)), 0);
+    assert.ok(Math.max(...page.markers.map(({ y, height }) => y + height)) <= page.height);
+  }
+});
