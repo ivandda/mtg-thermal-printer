@@ -1,6 +1,6 @@
 /** @import { Darkness, Design, Token } from "../designs.js" */
 /** @import { MarkerSelection } from "../markers.js" */
-/** @import { PrintList } from "../print-list.js" */
+/** @import { PrintList, PrintListItem } from "../print-list.js" */
 /** @import { PrinterConnection } from "../printers/connection.js" */
 /** @import { Bitmap, Media } from "../printers/types.js" */
 /** @import { ScryfallCard, ScryfallClient } from "../scryfall/client.js" */
@@ -14,6 +14,7 @@ import {
   loadArt,
   pageCount,
   renderDesign,
+  tokenOf,
 } from "../designs.js";
 import { cardSize } from "../imaging/card.js";
 import { markerTotal } from "../markers.js";
@@ -36,8 +37,17 @@ import { bindStepper } from "./stepper.js";
  * @param {PrintList} options.printList
  * @param {(token: Token) => void} options.onTokenChange  Called when the token's image is arranged.
  * @param {(card: ScryfallCard, face: number) => void} options.onCustomize
+ * @param {(saved: boolean, id: string) => void} options.onEditEnd  After Save changes or Cancel.
  */
-export function createLabelPanel({ scryfall, printer, labelSize, printList, onTokenChange, onCustomize }) {
+export function createLabelPanel({
+  scryfall,
+  printer,
+  labelSize,
+  printList,
+  onTokenChange,
+  onCustomize,
+  onEditEnd,
+}) {
   const ui = {
     label: element("#label", HTMLElement),
     labelWidth: element("#label-width", HTMLElement),
@@ -66,6 +76,8 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     cropBorder: element("#crop-border", HTMLInputElement),
     artOption: element("#art-option", HTMLElement),
     includeArt: element("#include-art", HTMLInputElement),
+    editingNote: element("#editing-note", HTMLElement),
+    cancelEdit: element("#cancel-edit", HTMLButtonElement),
     copiesStepper: element("#copies-stepper", HTMLElement),
     copies: element("#copies", HTMLInputElement),
     addToList: element("#add-to-list", HTMLButtonElement),
@@ -96,6 +108,8 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     artImage: undefined,
     /** @type {Rect | undefined} */
     artBox: undefined,
+    /** The print list label being changed, if any. @type {string | undefined} */
+    editing: undefined,
     printing: false,
   };
   let renderId = 0;
@@ -518,13 +532,54 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     const current = design();
     if (!current) return;
     const count = copies();
+    if (state.editing) {
+      printList.replace(state.editing, current, count);
+      endEdit(true);
+      return;
+    }
     printList.add(current, count);
     ui.status.textContent =
       count === 1 ? "Added to the print list." : `Added ${count} labels to the print list.`;
   }
 
+  /**
+   * Loads a label from the print list so its options can be changed.
+   * @param {PrintListItem} item
+   */
+  function editItem({ id, design: saved, copies: count }) {
+    state.editing = id;
+    ui.copies.value = String(count);
+    ui.status.textContent = "";
+    if (saved.type === "card") {
+      styleChoice.value = saved.style === "text" ? "text" : "image";
+      darknessChoice.value = saved.darkness;
+      ui.cropBorder.checked = saved.cropBorder;
+      ui.includeArt.checked = saved.art === true;
+      showCard(saved.card, saved.bothSides ? "both" : saved.face);
+    } else if (saved.type === "token") {
+      darknessChoice.value = saved.darkness;
+      showToken(tokenOf(saved));
+    } else {
+      showMarkers({ counts: saved.counts, custom: saved.custom ?? [] });
+    }
+    updateButtons();
+  }
+
+  /** @param {boolean} saved  Whether the label was changed or left as it was. */
+  function endEdit(saved) {
+    const id = state.editing;
+    if (!id) return;
+    state.editing = undefined;
+    updateButtons();
+    onEditEnd(saved, id);
+  }
+
   function updateButtons() {
     const count = copies();
+    const editing = Boolean(state.editing);
+    ui.editingNote.hidden = !editing;
+    ui.cancelEdit.hidden = !editing;
+    ui.addToList.textContent = editing ? "Save changes" : "Add to list";
     const nothingToPrint = {
       card: !state.card,
       token: !state.token || isBlankToken(state.token),
@@ -577,6 +632,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     if (state.card) onCustomize(state.card, state.face);
   });
   ui.addToList.addEventListener("click", addToList);
+  ui.cancelEdit.addEventListener("click", () => endEdit(false));
   ui.previousPage.addEventListener("click", () => turnPage(-1));
   ui.nextPage.addEventListener("click", () => turnPage(1));
   bindStepper(ui.copiesStepper, updateButtons);
@@ -613,6 +669,7 @@ export function createLabelPanel({ scryfall, printer, labelSize, printList, onTo
     showCards,
     showMarkers,
     showToken,
+    editItem,
     /**
      * @param {string} text
      * @param {{ href: string, text: string }} [link]
