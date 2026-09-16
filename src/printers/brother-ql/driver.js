@@ -63,13 +63,30 @@ function lengthen(page, rows) {
   return { width: page.width, height: rows, pixels };
 }
 
-/** @param {Transport} transport */
+/** @param {number} ms */
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The printer's next status. Replies that aren't one, such as a stray or split packet, are passed
+ * over rather than failing a job that is already under way, and the whole wait is bounded so a
+ * printer that only ever answers with nothing can't hold the job open.
+ * @param {Transport} transport
+ */
 async function nextStatus(transport) {
-  let reply;
-  do {
-    reply = await withTimeout(transport.read(), REPLY_TIMEOUT_MS, "The printer stopped responding");
-  } while (reply.length === 0);
-  return parseStatus(reply);
+  const deadline = Date.now() + REPLY_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const reply = await withTimeout(transport.read(), REPLY_TIMEOUT_MS, "The printer stopped responding");
+    if (reply.length === 0) {
+      await pause(5);
+      continue;
+    }
+    try {
+      return parseStatus(reply);
+    } catch {
+      // Not a status: keep listening.
+    }
+  }
+  throw new Error("The printer stopped responding");
 }
 
 /**

@@ -61,3 +61,14 @@ test("cards saved before mana costs existed get an empty one", () => {
   backup.cards = [old];
   assert.equal(readBackup(JSON.stringify(backup)).cards[0].manaCost, "");
 });
+
+test("a file with no version isn't mistaken for a newer backup", () => {
+  const text = JSON.stringify({ format: "mtg-thermal-printer/my-cards", cards: [] });
+  assert.throws(
+    () => readBackup(text),
+    (error) => error instanceof Error && !/newer version/.test(error.message),
+    "a missing version means it isn't a backup, not that it's from a newer page",
+  );
+  const newer = JSON.stringify({ format: "mtg-thermal-printer/my-cards", version: 99, cards: [] });
+  assert.throws(() => readBackup(newer), /newer version/);
+});
