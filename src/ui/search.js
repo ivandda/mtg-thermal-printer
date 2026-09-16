@@ -57,7 +57,9 @@ export function createSearch({ scryfall, onSelect }) {
 
   document.addEventListener("keydown", (event) => {
     const typing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
-    if (event.key !== "/" || typing || document.body.dataset.mode !== "find") return;
+    // The search box is out of reach while a label from the print list is being changed.
+    const browsing = document.body.dataset.mode === "find" && !document.body.dataset.editing;
+    if (event.key !== "/" || typing || !browsing) return;
     event.preventDefault();
     ui.query.focus();
   });

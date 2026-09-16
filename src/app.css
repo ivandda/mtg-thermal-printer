@@ -376,6 +376,29 @@ select:disabled {
   margin: 2rem auto 0;
 }
 
+/* Changing a label from the print list */
+
+.editing-screen {
+  display: grid;
+  grid-column: 1 / -1;
+  justify-items: start;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--text);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.editing-screen h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.editing-what {
+  margin: 0;
+  color: var(--muted);
+}
+
 /* Find cards or create a token */
 
 .modes {
@@ -825,6 +848,29 @@ body:not([data-mode="deck"]) .deck {
   gap: 0.875rem;
 }
 
+/* The tabs are out of reach while a label is changed, and a card's results aren't part of it. */
+body[data-editing] .modes,
+body[data-editing="card"] .browse {
+  display: none;
+}
+
+body[data-editing] .workspace {
+  row-gap: 1.5rem;
+}
+
+/* A card has nothing beside its label to change, so the label takes the middle. */
+body[data-editing="card"] .workspace {
+  grid-template-columns: minmax(0, 34rem);
+  justify-content: center;
+}
+
+body[data-editing] .label-panel {
+  padding: 1rem;
+  border: 1px solid var(--text);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
 .back {
   display: none;
 }
@@ -1167,10 +1213,6 @@ body:not([data-mode="deck"]) .deck {
   gap: 0.5rem;
 }
 
-.editing-note {
-  margin: 0 0 0.5rem;
-}
-
 .print-actions .button {
   min-height: 3.25rem;
 }
@@ -1408,6 +1450,11 @@ body:has(.sheet[open]) {
   .back,
   .preview-button {
     display: block;
+  }
+
+  /* The label's own Back leaves the print list label alone, so the header needs no button. */
+  #back-to-list {
+    display: none;
   }
 
   .back {

@@ -45,5 +45,12 @@ export function createModes(onChange) {
   const linked = addressParam("mode");
   if (linked === "create" || linked === "markers" || linked === "deck") show(linked);
 
-  return { show };
+  return {
+    show,
+
+    /** Puts the Back button's label back, after it pointed at the print list. */
+    refreshBack() {
+      back.textContent = BACK_LABELS[current()];
+    },
+  };
 }

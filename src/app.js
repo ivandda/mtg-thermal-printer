@@ -5,6 +5,7 @@ import { PrinterConnection } from "./printers/connection.js";
 import { createScryfallClient, ScryfallError } from "./scryfall/client.js";
 import { addressParam, updateAddress } from "./ui/address.js";
 import { createDeck } from "./ui/deck.js";
+import { element } from "./ui/dom.js";
 import { createLabelPanel } from "./ui/label-panel.js";
 import { LabelSize } from "./ui/label-size.js";
 import { createMarkersPicker } from "./ui/markers-picker.js";
@@ -38,6 +39,7 @@ const panel = createLabelPanel({
   onEditEnd(saved, id) {
     if (!saved && markersBeforeEdit) markers.show(markersBeforeEdit);
     markersBeforeEdit = undefined;
+    modes.refreshBack();
     list.open(id, saved ? "Changes saved." : undefined);
   },
 });
@@ -91,9 +93,15 @@ const list = createPrintListDialog({
       modes.show("find");
     }
     panel.editItem({ ...item, design });
+    // On a narrow screen the label fills it, so Back leaves the label alone and returns to the list.
+    back.textContent = "Back to the print list";
     views.openLabel();
   },
 });
+const back = element("#back", HTMLButtonElement);
+back.addEventListener("click", () => panel.cancelEdit());
+element("#back-to-list", HTMLButtonElement).addEventListener("click", () => panel.cancelEdit());
+
 bindPrinterButton(printer, panel.showStatus);
 
 printer.restore();
