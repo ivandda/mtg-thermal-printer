@@ -10,6 +10,7 @@ import {
   artBoxOf,
   customKind,
   DARKNESS,
+  describeDesign,
   isBlankToken,
   loadArt,
   pageCount,
@@ -76,7 +77,8 @@ export function createLabelPanel({
     cropBorder: element("#crop-border", HTMLInputElement),
     artOption: element("#art-option", HTMLElement),
     includeArt: element("#include-art", HTMLInputElement),
-    editingNote: element("#editing-note", HTMLElement),
+    editingScreen: element("#editing-screen", HTMLElement),
+    editingWhat: element("#editing-what", HTMLElement),
     cancelEdit: element("#cancel-edit", HTMLButtonElement),
     copiesStepper: element("#copies-stepper", HTMLElement),
     copies: element("#copies", HTMLInputElement),
@@ -548,6 +550,9 @@ export function createLabelPanel({
    */
   function editItem({ id, design: saved, copies: count }) {
     state.editing = id;
+    const { name, detail } = describeDesign(saved);
+    ui.editingWhat.textContent = detail ? `${name} — ${detail}` : name;
+    document.body.dataset.editing = saved.type;
     ui.copies.value = String(count);
     ui.status.textContent = "";
     if (saved.type === "card") {
@@ -570,6 +575,7 @@ export function createLabelPanel({
     const id = state.editing;
     if (!id) return;
     state.editing = undefined;
+    delete document.body.dataset.editing;
     updateButtons();
     onEditEnd(saved, id);
   }
@@ -577,7 +583,7 @@ export function createLabelPanel({
   function updateButtons() {
     const count = copies();
     const editing = Boolean(state.editing);
-    ui.editingNote.hidden = !editing;
+    ui.editingScreen.hidden = !editing;
     ui.cancelEdit.hidden = !editing;
     ui.addToList.textContent = editing ? "Save changes" : "Add to list";
     const nothingToPrint = {
@@ -670,6 +676,9 @@ export function createLabelPanel({
     showMarkers,
     showToken,
     editItem,
+
+    /** Leaves a label from the print list as it was, if one is being changed. */
+    cancelEdit: () => endEdit(false),
     /**
      * @param {string} text
      * @param {{ href: string, text: string }} [link]

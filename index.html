@@ -23,6 +23,12 @@
     </header>
 
     <main class="workspace">
+      <section id="editing-screen" class="editing-screen" aria-labelledby="editing-title" hidden>
+        <h2 id="editing-title">Changing a label in the print list</h2>
+        <p id="editing-what" class="editing-what"></p>
+        <button id="back-to-list" class="button" type="button">Back to the print list</button>
+      </section>
+
       <div class="choose">
       <fieldset class="modes">
         <legend class="visually-hidden">What to print</legend>
@@ -297,7 +303,6 @@
         </form>
 
         <div class="print-bar">
-          <p id="editing-note" class="hint editing-note" hidden>Changing a label in the print list.</p>
           <div class="print-actions">
             <button id="cancel-edit" class="button" type="button" hidden>Cancel</button>
             <button id="add-to-list" class="button" type="button" disabled>Add to list</button>
