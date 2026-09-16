@@ -388,8 +388,9 @@ select:disabled {
 .editing-screen {
   display: grid;
   grid-column: 1 / -1;
-  justify-items: start;
-  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.25rem 1rem;
   padding: 1rem 1.25rem;
   border: 1px solid var(--text);
   border-radius: var(--radius);
@@ -397,13 +398,24 @@ select:disabled {
 }
 
 .editing-screen h2 {
+  grid-column: 1;
   margin: 0;
   font-size: 1.125rem;
 }
 
+/* Pinned to the first column: the buttons beside it are gone on a phone. */
 .editing-what {
+  grid-column: 1;
   margin: 0;
   color: var(--muted);
+}
+
+/* Beside the text, so the bar is two rows rather than three. */
+.editing-actions {
+  display: flex;
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  gap: 0.5rem;
 }
 
 /* Find cards or create a token */
@@ -1459,8 +1471,8 @@ body:has(.sheet[open]) {
     display: block;
   }
 
-  /* The label's own Back leaves the print list label alone, so the header needs no button. */
-  #back-to-list {
+  /* The panel's own Back and buttons are right there, so the bar keeps only its text. */
+  .editing-actions {
     display: none;
   }
 

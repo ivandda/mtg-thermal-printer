@@ -100,7 +100,6 @@ const list = createPrintListDialog({
 });
 const back = element("#back", HTMLButtonElement);
 back.addEventListener("click", () => panel.cancelEdit());
-element("#back-to-list", HTMLButtonElement).addEventListener("click", () => panel.cancelEdit());
 
 bindPrinterButton(printer, panel.showStatus);
 
