@@ -48,6 +48,20 @@ test("a label can be changed in place, keeping its order", () => {
   assert.equal(list.items.length, 2);
 });
 
+test("changing a label that has been removed says so and writes nothing", () => {
+  const list = new PrintList(memoryStorage());
+  list.add(TREASURE, 1);
+  const [item] = list.items;
+  let changes = 0;
+  list.addEventListener("change", () => changes++);
+  assert.equal(list.replace(item.id, { ...TREASURE, darkness: "darker" }, 2), true);
+  assert.equal(changes, 1);
+  list.remove(item.id);
+  assert.equal(list.replace(item.id, TREASURE, 1), false);
+  assert.equal(changes, 2, "a label that is gone is not written again");
+  assert.deepEqual(list.items, []);
+});
+
 test("saved labels come back on the next visit", () => {
   const storage = memoryStorage();
   new PrintList(storage).add(TREASURE, 3);

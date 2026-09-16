@@ -5,6 +5,11 @@
 /** @import { Bitmap, Media } from "../printers/types.js" */
 /** @import { ScryfallCard, ScryfallClient } from "../scryfall/client.js" */
 /** @import { Rect } from "./art-arranger.js" */
+/**
+ * How changing a label from the print list ended: saved, left as it was, the label was already
+ * gone, or the panel moved on to something else.
+ * @typedef {"saved" | "cancelled" | "gone" | "dropped"} EditResult
+ */
 /** @import { LabelSize } from "./label-size.js" */
 import {
   artBoxOf,
@@ -38,7 +43,7 @@ import { bindStepper } from "./stepper.js";
  * @param {PrintList} options.printList
  * @param {(token: Token) => void} options.onTokenChange  Called when the token's image is arranged.
  * @param {(card: ScryfallCard, face: number) => void} options.onCustomize
- * @param {(saved: boolean, id: string) => void} options.onEditEnd  After Save changes or Cancel.
+ * @param {(result: EditResult, id: string) => void} options.onEditEnd  How changing a label ended.
  */
 export function createLabelPanel({
   scryfall,
@@ -116,6 +121,11 @@ export function createLabelPanel({
     editing: undefined,
     printing: false,
   };
+  /**
+   * The panel's own options and copies, put back when a label from the list is done with.
+   * @type {{ copies: string, style: string, darkness: string, cropBorder: boolean, art: boolean } | undefined}
+   */
+  let previous;
   let renderId = 0;
   let relatedId = 0;
   let arrangeFrame = 0;
@@ -323,6 +333,8 @@ export function createLabelPanel({
   /** @param {Token | undefined} token  None while My cards is shown. */
   function showToken(token) {
     if (!token) {
+      // My cards is shown: there is no card to change any more.
+      if (state.editing) endEdit("dropped");
       showEmpty("token");
       return;
     }
@@ -537,8 +549,7 @@ export function createLabelPanel({
     if (!current) return;
     const count = copies();
     if (state.editing) {
-      printList.replace(state.editing, current, count);
-      endEdit(true);
+      endEdit(printList.replace(state.editing, current, count) ? "saved" : "gone");
       return;
     }
     printList.add(current, count);
@@ -551,6 +562,13 @@ export function createLabelPanel({
    * @param {PrintListItem} item
    */
   function editItem({ id, design: saved, copies: count }) {
+    previous ??= {
+      copies: ui.copies.value,
+      style: styleChoice.value,
+      darkness: darknessChoice.value,
+      cropBorder: ui.cropBorder.checked,
+      art: ui.includeArt.checked,
+    };
     state.editing = id;
     const { name, detail } = describeDesign(saved);
     ui.editingWhat.textContent = detail ? `${name} — ${detail}` : name;
@@ -572,14 +590,25 @@ export function createLabelPanel({
     updateButtons();
   }
 
-  /** @param {boolean} saved  Whether the label was changed or left as it was. */
-  function endEdit(saved) {
+  /** @param {EditResult} result */
+  function endEdit(result) {
     const id = state.editing;
     if (!id) return;
     state.editing = undefined;
     delete document.body.dataset.editing;
+    if (previous) {
+      // The label's own options and copies belong to it, not to whatever is printed next.
+      ui.copies.value = previous.copies;
+      styleChoice.value = previous.style;
+      darknessChoice.value = previous.darkness;
+      ui.cropBorder.checked = previous.cropBorder;
+      ui.includeArt.checked = previous.art;
+      previous = undefined;
+      showOptions();
+      if (design()) updatePreview();
+    }
     updateButtons();
-    onEditEnd(saved, id);
+    onEditEnd(result, id);
   }
 
   function updateButtons() {
@@ -621,10 +650,13 @@ export function createLabelPanel({
       state.bothSides = target.value === "both";
       if (!state.bothSides) state.face = Number(target.value);
     }
-    writeSetting("style", style());
-    writeSetting("darkness", darkness());
-    writeSetting("cropBorder", ui.cropBorder.checked);
-    writeSetting("art", ui.includeArt.checked);
+    // A label from the print list carries its own options; they aren't the user's defaults.
+    if (!state.editing) {
+      writeSetting("style", style());
+      writeSetting("darkness", darkness());
+      writeSetting("cropBorder", ui.cropBorder.checked);
+      writeSetting("art", ui.includeArt.checked);
+    }
     if (state.source === "card") rememberCard();
     showHeading();
     showOptions();
@@ -637,11 +669,15 @@ export function createLabelPanel({
   });
 
   ui.customize.addEventListener("click", () => {
-    if (state.card) onCustomize(state.card, state.face);
+    if (!state.card) return;
+    const { card, face } = state;
+    // A card of your own is a new label, so the one in the list is left as it was.
+    endEdit("dropped");
+    onCustomize(card, face);
   });
   ui.addToList.addEventListener("click", addToList);
-  ui.cancelEdit.addEventListener("click", () => endEdit(false));
-  ui.cancelTop.addEventListener("click", () => endEdit(false));
+  ui.cancelEdit.addEventListener("click", () => endEdit("cancelled"));
+  ui.cancelTop.addEventListener("click", () => endEdit("cancelled"));
   ui.saveTop.addEventListener("click", addToList);
   ui.previousPage.addEventListener("click", () => turnPage(-1));
   ui.nextPage.addEventListener("click", () => turnPage(1));
@@ -682,7 +718,7 @@ export function createLabelPanel({
     editItem,
 
     /** Leaves a label from the print list as it was, if one is being changed. */
-    cancelEdit: () => endEdit(false),
+    cancelEdit: () => endEdit("cancelled"),
     /**
      * @param {string} text
      * @param {{ href: string, text: string }} [link]
