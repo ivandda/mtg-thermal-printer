@@ -79,6 +79,8 @@ export function createLabelPanel({
     includeArt: element("#include-art", HTMLInputElement),
     editingScreen: element("#editing-screen", HTMLElement),
     editingWhat: element("#editing-what", HTMLElement),
+    cancelTop: element("#cancel-edit-top", HTMLButtonElement),
+    saveTop: element("#save-edit-top", HTMLButtonElement),
     cancelEdit: element("#cancel-edit", HTMLButtonElement),
     copiesStepper: element("#copies-stepper", HTMLElement),
     copies: element("#copies", HTMLInputElement),
@@ -595,6 +597,7 @@ export function createLabelPanel({
       markers: markerTotal(state.markers.counts) === 0,
     }[state.source];
     ui.addToList.disabled = nothingToPrint;
+    ui.saveTop.disabled = nothingToPrint;
     if (printer.state.kind === "unsupported") {
       ui.print.disabled = true;
       ui.print.textContent = "Printing needs Chrome or Edge";
@@ -638,6 +641,8 @@ export function createLabelPanel({
   });
   ui.addToList.addEventListener("click", addToList);
   ui.cancelEdit.addEventListener("click", () => endEdit(false));
+  ui.cancelTop.addEventListener("click", () => endEdit(false));
+  ui.saveTop.addEventListener("click", addToList);
   ui.previousPage.addEventListener("click", () => turnPage(-1));
   ui.nextPage.addEventListener("click", () => turnPage(1));
   bindStepper(ui.copiesStepper, updateButtons);
