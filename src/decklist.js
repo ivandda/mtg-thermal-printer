@@ -37,8 +37,6 @@ const LINE =
 // "1x Sol Ring (c21) 263 [Ramp,Maybeboard{noDeck}] ^Have,#37d67a^".
 const LABELS = /\s+\^[^^]*\^/g;
 const CATEGORIES = /\s+\[([^\]]*)\]$/;
-const SET_CODE = /^[A-Za-z0-9]{2,6}$/;
-const AFTER_PRINTING = /(\)|\)\s+[A-Za-z0-9★-]+|\*[A-Za-z]+\*)$/;
 
 /**
  * The cards in a decklist, once each with how many there are. Section headers, comments, the deck's
@@ -49,29 +47,30 @@ const AFTER_PRINTING = /(\)|\)\s+[A-Za-z0-9★-]+|\*[A-Za-z]+\*)$/;
 export function parseDecklist(text) {
   /** @type {Map<string, DeckEntry>} */
   const entries = new Map();
-  let leftOut = false;
+  /** The section being skipped, if any. It lasts until the next header. */
+  let leftOut = "";
   for (const raw of text.split(/\r?\n/)) {
     let line = raw
       .trim()
       .replace(/^SB:\s*/i, "")
       .replace(LABELS, "");
     if (!line) {
-      leftOut = false;
+      // Arena's About section is the deck's name and ends at the blank line; others don't.
+      if (leftOut === "about") leftOut = "";
       continue;
     }
     if (line.startsWith("//") || line.startsWith("#")) continue;
     const section = SECTION.exec(line);
     if (section) {
-      leftOut = LEFT_OUT.has(section[1].toLowerCase());
+      const name = section[1].toLowerCase();
+      leftOut = LEFT_OUT.has(name) ? name : "";
       continue;
     }
     if (leftOut) continue;
+    // A trailing bracket is Archidekt's categories. Reading it as a set code instead would turn
+    // a category like [Ramp] into a set, so the printing is left to the name.
     const categories = CATEGORIES.exec(line);
-    // A lone "[M10]" can be a set code, but not after a set in parentheses or with more than a code.
-    if (
-      categories &&
-      (!SET_CODE.test(categories[1]) || AFTER_PRINTING.test(line.slice(0, categories.index)))
-    ) {
+    if (categories) {
       if (/\{noDeck\}/i.test(categories[1])) continue;
       line = line.slice(0, categories.index);
     }
@@ -172,26 +171,44 @@ export const isBasicLand = (card) => /^Basic\b/.test(card.type_line ?? "");
  */
 async function lookUp(scryfall, entries, identify) {
   if (entries.length === 0) return { found: [], missing: [] };
-  const identifiers = entries.map(identify);
-  const { cards, notFound } = await scryfall.collection(identifiers);
-  const notFoundKeys = new Set(notFound.map((identifier) => JSON.stringify(identifier)));
-  const pool = [...cards];
+  // Lines asking for the same card share one identifier, so a reply that answers it once counts
+  // for all of them.
+  /** @type {{ identifier: CardIdentifier, entries: DeckEntry[] }[]} */
+  const wanted = [];
+  /** @type {Map<string, { identifier: CardIdentifier, entries: DeckEntry[] }>} */
+  const byKey = new Map();
+  for (const entry of entries) {
+    const identifier = identify(entry);
+    const key = JSON.stringify(Object.entries(identifier).sort());
+    const same = byKey.get(key);
+    if (same) {
+      same.entries.push(entry);
+      continue;
+    }
+    const group = { identifier, entries: [entry] };
+    byKey.set(key, group);
+    wanted.push(group);
+  }
+
+  const { cards } = await scryfall.collection(wanted.map(({ identifier }) => identifier));
+  // Every card is paired with what it was asked for, so counts stay with their cards whatever
+  // order the reply comes in. What nothing answers is missing, never another card.
+  const taken = new Set();
   /** @type {DeckCard[]} */
   const found = [];
   /** @type {DeckEntry[]} */
   const missing = [];
-  entries.forEach((entry, index) => {
-    const identifier = identifiers[index];
-    if (notFoundKeys.has(JSON.stringify(identifier))) {
-      missing.push(entry);
-      return;
+  for (const { identifier, entries: asked } of wanted) {
+    const card =
+      cards.find((candidate) => !taken.has(candidate) && matches(candidate, identifier)) ??
+      cards.find((candidate) => matches(candidate, identifier));
+    if (!card) {
+      missing.push(...asked);
+      continue;
     }
-    // Cards come back in the order they were asked for; matching them keeps counts right even if not.
-    const at = pool.findIndex((card) => matches(card, identifier));
-    const [card] = pool.splice(at === -1 ? 0 : at, 1);
-    if (card) found.push({ card, count: entry.count });
-    else missing.push(entry);
-  });
+    taken.add(card);
+    for (const entry of asked) found.push({ card, count: entry.count });
+  }
   return { found, missing };
 }
 
@@ -201,18 +218,26 @@ async function lookUp(scryfall, entries, identify) {
  */
 function matches(card, identifier) {
   if ("id" in identifier) return card.id === identifier.id;
-  if ("collector_number" in identifier) return card.collector_number === identifier.collector_number;
+  if ("collector_number" in identifier) {
+    // Collector numbers repeat across sets, so the set has to agree too.
+    return card.set === identifier.set && card.collector_number === identifier.collector_number;
+  }
+  if (identifier.set && card.set !== identifier.set) return false;
   return [card.name, frontName(card.name)].some((name) => plain(name) === plain(identifier.name));
 }
 
 /** @param {string} name */
 const frontName = (name) => name.split(" // ")[0];
 
-/** @param {string} name */
+/**
+ * A name as Scryfall compares it, which ignores accents, punctuation and case.
+ * @param {string} name
+ */
 const plain = (name) =>
   name
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^\p{L}\p{N}]+/gu, "")
     .toLowerCase();
 
 /**

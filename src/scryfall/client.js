@@ -13,6 +13,7 @@
  *   oracle_id?: string,
  *   name: string,
  *   set_name: string,
+ *   set?: string,
  *   collector_number: string,
  *   border_color?: string,
  *   image_uris?: ImageUris,
@@ -185,7 +186,7 @@ export function createScryfallClient({
         const reply = await get("/cards/collection", {
           identifiers: identifiers.slice(start, start + COLLECTION_SIZE),
         });
-        cards.push(...reply.data);
+        cards.push(...(reply.data ?? []));
         notFound.push(...(reply.not_found ?? []));
       }
       return { cards, notFound };

@@ -37,13 +37,15 @@ test("Archidekt's categories and labels are read, and cards kept out of the deck
 Maybeboard
 1 Skullclamp
 
+1 Mox Diamond
+
 Tokens
 1 Goblin`;
   assert.deepEqual(parseDecklist(archidekt), [
     { count: 1, name: "Sol Ring", set: "c21", number: "263" },
     { count: 1, name: "Krenko, Mob Boss", set: "m13", number: "139" },
     { count: 1, name: "Lightning Bolt" },
-    { count: 1, name: "Llanowar Elves", set: "m19" },
+    { count: 1, name: "Llanowar Elves" },
   ]);
 });
 
@@ -69,8 +71,11 @@ test("basic lands and pasted deck links are recognized", () => {
  * @returns {ScryfallCard}
  */
 function card(id, name, extra = {}) {
-  return { id, oracle_id: `o-${id}`, name, set_name: "Set", collector_number: "1", ...extra };
+  return { id, oracle_id: `o-${id}`, name, set: "set", set_name: "Set", collector_number: "1", ...extra };
 }
+
+/** Names as Scryfall compares them: punctuation, spacing and case don't count. */
+const loose = (/** @type {string} */ name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 /**
  * A Scryfall stand-in that knows some cards by name, set and number, or ID.
@@ -95,8 +100,10 @@ function fakeScryfall(known, { reversed = false } = {}) {
             ("id" in identifier && candidate.id === identifier.id) ||
             ("name" in identifier &&
               !("set" in identifier) &&
-              candidate.name.split(" // ")[0] === identifier.name) ||
-            ("collector_number" in identifier && candidate.collector_number === identifier.collector_number),
+              loose(candidate.name.split(" // ")[0]) === loose(identifier.name)) ||
+            ("collector_number" in identifier &&
+              candidate.set === identifier.set &&
+              candidate.collector_number === identifier.collector_number),
         );
         if (found) cards.push(found);
         else notFound.push(identifier);
@@ -110,7 +117,7 @@ test("a deck's cards are found with their counts, and names not found are listed
   const scryfall = fakeScryfall([
     card("krenko", "Krenko, Mob Boss"),
     card("delver", "Delver of Secrets // Insectile Aberration"),
-    card("bolt", "Lightning Bolt", { collector_number: "146" }),
+    card("bolt", "Lightning Bolt", { set: "m10", collector_number: "146" }),
   ]);
   const { cards, missing } = await findDeckCards(scryfall, [
     { count: 4, name: "Krenko, Mob Boss", set: "zzz", number: "999" },
@@ -174,6 +181,77 @@ test("a deck's tokens are listed once, with the cards that make them", async () 
       ["Treasure", ["Goblin Warchief Maker"]],
     ],
   );
+});
+
+test("two sets sharing a collector number keep their own counts", async () => {
+  const scryfall = fakeScryfall(
+    [
+      card("bolt", "Lightning Bolt", { set: "m10", collector_number: "146" }),
+      card("forest", "Forest", { set: "khm", collector_number: "146" }),
+    ],
+    { reversed: true },
+  );
+  const { cards, missing } = await findDeckCards(scryfall, [
+    { count: 4, name: "Lightning Bolt", set: "m10", number: "146" },
+    { count: 30, name: "Forest", set: "khm", number: "146" },
+  ]);
+  assert.deepEqual(
+    cards.map(({ card: found, count }) => [found.name, count]),
+    [
+      ["Lightning Bolt", 4],
+      ["Forest", 30],
+    ],
+  );
+  assert.deepEqual(missing, []);
+});
+
+test("a card the reply doesn't answer is listed, never given another card's count", async () => {
+  /** @type {CardIdentifier[][]} */
+  const requests = [];
+  const scryfall = {
+    requests,
+    /** @param {CardIdentifier[]} identifiers */
+    async collection(identifiers) {
+      requests.push(identifiers);
+      // Answers with a card nothing asked for, as a reply out of step would.
+      return { cards: [card("forest", "Forest")], notFound: [] };
+    },
+  };
+  const { cards, missing } = await findDeckCards(scryfall, [{ count: 4, name: "Lightning Bolt" }]);
+  assert.deepEqual(cards, []);
+  assert.deepEqual(missing, ["Lightning Bolt"]);
+});
+
+test("names match the way Scryfall compares them, apostrophes and all", async () => {
+  const scryfall = fakeScryfall([card("jaya", "Jaya's Immolating Inferno"), card("forest", "Forest")], {
+    reversed: true,
+  });
+  const { cards, missing } = await findDeckCards(scryfall, [
+    { count: 1, name: "Jaya\u2019s Immolating Inferno" },
+    { count: 30, name: "Forest" },
+  ]);
+  assert.deepEqual(
+    cards.map(({ card: found, count }) => [found.name, count]),
+    [
+      ["Jaya's Immolating Inferno", 1],
+      ["Forest", 30],
+    ],
+  );
+  assert.deepEqual(missing, []);
+});
+
+test("lines that ask for the same card are looked up once and both counted", async () => {
+  const scryfall = fakeScryfall([card("sol", "Sol Ring")]);
+  const { cards, missing } = await findDeckCards(scryfall, [
+    { count: 1, name: "Sol Ring", set: "ltr", number: "999" },
+    { count: 1, name: "Sol Ring", set: "cmm", number: "888" },
+  ]);
+  assert.deepEqual(
+    cards.map(({ card: found, count }) => [found.name, count]),
+    [["Sol Ring", 2]],
+  );
+  assert.deepEqual(missing, []);
+  assert.deepEqual(scryfall.requests[1], [{ name: "Sol Ring" }]);
 });
 
 test("a deck that makes nothing needs no request for tokens", async () => {
