@@ -36,7 +36,8 @@ import { bindStepper } from "./stepper.js";
  * @param {PrinterConnection} options.printer
  * @param {LabelSize} options.labelSize
  * @param {PrintList} options.printList
- * @param {(token: Token) => void} options.onTokenChange  Called when the token's image is arranged.
+ * @param {(token: Token, fromList: boolean) => void} options.onTokenChange  The token's image was
+ *   arranged. `fromList` means it belongs to a label from the print list, not to My cards.
  * @param {(card: ScryfallCard, face: number) => void} options.onCustomize
  * @param {(saved: boolean, id: string) => void} options.onEditEnd  After Save changes or Cancel.
  */
@@ -356,7 +357,7 @@ export function createLabelPanel({
     onArrange(arrangement) {
       if (!state.token?.art) return;
       state.token = { ...state.token, art: { ...state.token.art, ...arrangement } };
-      onTokenChange(state.token);
+      onTokenChange(state.token, Boolean(state.editing));
       cancelAnimationFrame(arrangeFrame);
       arrangeFrame = requestAnimationFrame(() => updatePreview(true));
     },

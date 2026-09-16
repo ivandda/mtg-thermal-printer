@@ -31,7 +31,7 @@ const panel = createLabelPanel({
   printer,
   labelSize,
   printList,
-  onTokenChange: (token) => tokens.update(token),
+  onTokenChange: (token, fromList) => tokens.update(token, { save: !fromList }),
   onCustomize(card, face) {
     tokens.createFrom(card, face);
     modes.show("create");

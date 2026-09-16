@@ -37,9 +37,16 @@ export async function openUsbPrinter(device) {
     read() {
       pendingRead ??= device
         .transferIn(input.endpointNumber, input.packetSize)
-        .then(({ data }) =>
-          data ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : new Uint8Array(),
-        )
+        .then(async ({ status, data }) => {
+          // A halted endpoint resolves with no data instead of failing, and stays halted until it
+          // is cleared, so reading again would spin for ever.
+          if (status === "stall") {
+            await device.clearHalt("in", input.endpointNumber);
+            throw new Error("USB read failed: the printer stalled");
+          }
+          if (status === "babble") throw new Error("USB read failed: babble");
+          return data ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : new Uint8Array();
+        })
         .finally(() => {
           pendingRead = null;
         });

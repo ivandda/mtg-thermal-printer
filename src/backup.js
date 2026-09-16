@@ -39,7 +39,8 @@ export function readBackup(text) {
     throw new Error(NOT_A_BACKUP);
   }
   if (backup?.format !== FORMAT || !Array.isArray(backup.cards)) throw new Error(NOT_A_BACKUP);
-  if (!(backup.version <= VERSION)) {
+  if (typeof backup.version !== "number") throw new Error(NOT_A_BACKUP);
+  if (backup.version > VERSION) {
     throw new Error("This backup was made by a newer version of this page. Reload the page and try again.");
   }
 

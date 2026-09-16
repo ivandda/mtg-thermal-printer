@@ -207,7 +207,9 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
     clearTimeout(saveTimer);
     saveTimer = undefined;
     const current = token;
-    if (isBlankToken(current)) return;
+    // A card that was never saved isn't worth saving while it's still blank; one that was saved is
+    // kept as the user left it, rather than reverting to what it used to say.
+    if (isBlankToken(current) && !saved.some((other) => other.id === current.id)) return;
     saved = byName([...saved.filter((other) => other.id !== current.id), current]);
     showActions();
     if (!canSave) return;
@@ -223,6 +225,12 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
   function saveNow() {
     if (saveTimer !== undefined) save();
   }
+
+  // Closing the tab inside the save delay would lose the last edit, so it is written on the way out.
+  addEventListener("pagehide", saveNow);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") saveNow();
+  });
 
   /* My cards */
 
@@ -457,6 +465,7 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
     }
     const added = backup.cards.filter((card) => !saved.some((other) => other.id === card.id));
     const already = backup.cards.length - added.length;
+    let written = 0;
     try {
       for (const card of added) {
         const id = storedImageOf(card.art);
@@ -464,12 +473,18 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
         if (id && image) await tokenStore.putImage(id, new Blob([image.bytes], { type: image.type }));
         await tokenStore.save(card);
         saved = byName([...saved, card]);
+        written++;
       }
     } catch {
-      status.textContent = "This browser couldn't save the cards from the backup.";
+      // Whatever was written is already in My cards, so it is shown rather than left hidden.
+      showLibrary(
+        written === 0
+          ? "This browser couldn't save the cards from the backup."
+          : `Restored ${written} of ${added.length} cards; this browser couldn't save the rest.`,
+      );
       return;
     }
-    if (saved.length === 0) {
+    if (backup.cards.length === 0) {
       status.textContent = "This backup has no cards.";
       return;
     }
@@ -525,9 +540,11 @@ export function createTokenEditor({ printList, labelSize, onShow, onPreview }) {
     /**
      * Keeps a change made outside the form, such as arranging the image on the label.
      * @param {Token} next
+     * @param {{ save?: boolean }} [options]  A label from the print list is not saved to My cards.
      */
-    update(next) {
+    update(next, { save: keep = true } = {}) {
       token = next;
+      if (!keep) return;
       clearTimeout(saveTimer);
       saveTimer = setTimeout(save, SAVE_DELAY_MS);
     },

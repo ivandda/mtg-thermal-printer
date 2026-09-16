@@ -46,3 +46,19 @@ test("a card too short for a continuous roll is centered on a label of the minim
   assert.ok(!blank(148));
   assert.ok(blank(149));
 });
+
+test("a reply that isn't a status is passed over instead of failing the job", async () => {
+  const media = MEDIA.find(({ id }) => id === "62x100");
+  assert.ok(media);
+  const replies = [bytes("deadbeef"), IDLE.slice(0, 12), PRINTED, WAITING];
+  const transport = {
+    write: async () => {},
+    read: async () => replies.shift() ?? new Uint8Array(),
+    close: async () => {},
+  };
+  const page = { width: 696, height: 1109, pixels: new Uint8Array(696 * 1109) };
+
+  await brotherQl(QL_700).print(transport, [page], media);
+
+  assert.equal(replies.length, 0, "every reply was read, and the job still finished");
+});
