@@ -24,7 +24,7 @@
 
     <main class="workspace">
       <section id="editing-screen" class="editing-screen" aria-labelledby="editing-title" hidden>
-        <h2 id="editing-title">Changing a label in the print list</h2>
+        <h2 id="editing-title">Changing an item in the print list</h2>
         <p id="editing-what" class="editing-what"></p>
         <button id="back-to-list" class="button" type="button">Back to the print list</button>
       </section>
@@ -126,7 +126,7 @@
                 <button id="choose-image" class="text-button" type="button">choose a file</button>.
               </p>
               <div id="image-chosen" class="image-chosen" hidden>
-                <p>Move and zoom the image on the label preview.</p>
+                <p>Move and zoom the image on the preview.</p>
                 <div class="image-buttons">
                   <button id="replace-image" class="button small" type="button">Replace image</button>
                   <button id="remove-image" class="button small" type="button">Remove image</button>
@@ -154,7 +154,7 @@
       </section>
 
       <section class="markers" aria-label="Markers">
-        <p class="hint">Choose how many of each marker you need. They're printed side by side on as few labels as possible, so one cut separates two markers.</p>
+        <p class="hint">Choose how many of each marker you need. They're printed side by side on as few pages as possible, so one cut separates two markers.</p>
         <div id="marker-groups" class="marker-groups"></div>
         <section class="marker-group" aria-labelledby="custom-title">
           <h2 id="custom-title">Your own</h2>
@@ -219,7 +219,7 @@
           <div class="dimension width"><span id="label-width">62 mm</span></div>
           <div class="liner">
             <div class="sticker">
-              <canvas id="preview" width="696" height="1109" role="img" aria-label="Label preview"></canvas>
+              <canvas id="preview" width="696" height="1109" role="img" aria-label="Preview"></canvas>
               <p class="placeholder">Pick a card to see how it prints.</p>
             </div>
           </div>
@@ -227,10 +227,10 @@
           <figcaption id="arrange-hint" class="arrange-hint" hidden>Drag the image to move it. Pinch or scroll to zoom.</figcaption>
         </figure>
 
-        <nav id="pages" class="pages" aria-label="Labels" hidden>
-          <button id="previous-page" class="button small" type="button" aria-label="Previous label">‹</button>
+        <nav id="pages" class="pages" aria-label="Pages" hidden>
+          <button id="previous-page" class="button small" type="button" aria-label="Previous page">‹</button>
           <span id="page-number" aria-live="polite"></span>
-          <button id="next-page" class="button small" type="button" aria-label="Next label">›</button>
+          <button id="next-page" class="button small" type="button" aria-label="Next page">›</button>
         </nav>
 
         <div id="card-heading" class="card-heading" hidden>
@@ -248,7 +248,7 @@
 
         <form id="controls" class="controls" novalidate>
           <div class="field">
-            <label for="media">Label</label>
+            <label for="media">Paper</label>
             <select id="media" name="media"></select>
           </div>
           <fieldset id="faces-field" class="field" hidden>
@@ -306,7 +306,7 @@
           <div class="print-actions">
             <button id="cancel-edit" class="button" type="button" hidden>Cancel</button>
             <button id="add-to-list" class="button" type="button" disabled>Add to list</button>
-            <button id="print" class="print" type="submit" form="controls" disabled>Print label</button>
+            <button id="print" class="print" type="submit" form="controls" disabled>Print</button>
           </div>
           <p id="print-status" class="print-status" aria-live="polite"></p>
         </div>
@@ -329,7 +329,7 @@
           <button id="close-list" class="button small" type="button" autofocus>Close</button>
         </header>
         <div class="sheet-body">
-          <p id="list-empty" class="sheet-empty">Nothing here yet. Pick a card and choose Add to list to print several labels together.</p>
+          <p id="list-empty" class="sheet-empty">Nothing here yet. Pick a card and choose Add to list to print several pages together.</p>
           <ul id="list-items" class="list-items"></ul>
         </div>
         <footer class="sheet-footer">

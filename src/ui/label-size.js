@@ -29,7 +29,7 @@ export class LabelSize extends EventTarget {
         LABELS.filter((media) => !media.lengthMm),
       ),
       optionGroup(
-        "Labels",
+        "Die-cut labels",
         LABELS.filter((media) => media.lengthMm),
       ),
     );

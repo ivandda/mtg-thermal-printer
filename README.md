@@ -7,12 +7,12 @@ Search Magic: The Gathering cards and tokens and print them as stickers on a the
 ## What it does
 
 - **Search** tokens or any paper card, with [Scryfall syntax](https://scryfall.com/docs/syntax) (`c:g power>=4`). Pick the printing and side, or both sides of a double-faced card to fold, and open the tokens and emblems a card makes.
-- **Preview** the exact black-and-white print, with darkness, label size and border options.
+- **Preview** the exact black-and-white print, with darkness, paper size and border options.
 - **Print as image or text**: large rules text with mana symbols, art optional.
 - **Create your own** cards and tokens, or customize any card. Saved in your browser, with backup to a file.
-- **Print markers**: The Monarch, Day and Night, trackers, keywords or your own, packed onto few labels.
+- **Print markers**: The Monarch, Day and Night, trackers, keywords or your own, packed onto few pages.
 - **Print a deck**: paste a decklist to add its cards to the print list with their counts, basic lands optional and double-faced cards on both sides, plus every token, emblem and game card it makes.
-- **Print list**: queue labels with their own options and copies, change any of them later, and print them at once.
+- **Print list**: queue pages with their own options and copies, change any of them later, and print them at once.
 - **Share** a card by its link, including cards you made (text and Scryfall art).
 
 On 62 × 100 mm die-cut labels (Brother DK-11202) a card prints at 59 × 82 mm, about 94% of real size.

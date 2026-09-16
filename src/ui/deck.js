@@ -79,8 +79,8 @@ export function createDeck({ scryfall, printList, onSelect }) {
     for (const { card } of tokens) printList.add(designOf(card, false), 1);
     ui.tokensAdded.textContent =
       tokens.length === 1
-        ? "Added 1 label to the print list. Change its copies there."
-        : `Added ${tokens.length} labels to the print list. Change their copies there.`;
+        ? "Added 1 token to the print list. Change its copies there."
+        : `Added ${tokens.length} tokens to the print list. Change their copies there.`;
   });
 
   async function lookUpDeck() {

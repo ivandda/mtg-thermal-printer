@@ -367,12 +367,12 @@ export function createLabelPanel({
     let name = "";
     if (state.source === "markers") {
       const total = markerTotal(state.markers.counts);
-      const labels = pageCount({ type: "markers", ...state.markers }, labelSize.current);
+      const sheets = pageCount({ type: "markers", ...state.markers }, labelSize.current);
       name = "Markers";
       ui.cardSet.textContent =
         total === 0
           ? "Pick markers to print"
-          : `${total} ${total === 1 ? "marker" : "markers"} on ${labels} ${labels === 1 ? "label" : "labels"}`;
+          : `${total} ${total === 1 ? "marker" : "markers"} on ${sheets} ${sheets === 1 ? "page" : "pages"}`;
     } else if (state.source === "token") {
       name = state.token?.name.trim() || "New card";
       ui.cardSet.textContent = state.token ? customKind(state.token) : "";
@@ -381,7 +381,7 @@ export function createLabelPanel({
       ui.cardSet.textContent = `${state.card.set_name}, #${state.card.collector_number}`;
     }
     ui.cardName.textContent = name;
-    ui.preview.setAttribute("aria-label", `Label preview of ${name}`);
+    ui.preview.setAttribute("aria-label", `Preview of ${name}`);
   }
 
   /** Shows only the options that change the label. */
@@ -396,7 +396,7 @@ export function createLabelPanel({
     ui.facesField.hidden = !card || !state.card || cardFaces(state.card).length < 2;
     ui.bothHint.hidden = ui.facesField.hidden || !state.bothSides;
     ui.bothHint.textContent = labelSize.current.lengthMm
-      ? "Each side prints on its own label."
+      ? "Each side prints on its own page."
       : "Both sides print on one piece. Fold it on the dashed line.";
     ui.styleField.hidden = !card;
     ui.borderOption.hidden = !card || text;
@@ -423,7 +423,7 @@ export function createLabelPanel({
     if (!current) return;
     const id = ++renderId;
     const media = labelSize.current;
-    if (state.source === "markers") showHeading(); // the label count depends on the label size
+    if (state.source === "markers") showHeading(); // the page count depends on the paper size
     if (!quiet) {
       state.page = undefined;
       state.pages = [];
@@ -465,7 +465,7 @@ export function createLabelPanel({
     ui.pages.hidden = count < 2;
     if (count < 2) return;
     const focused = document.activeElement;
-    ui.pageNumber.textContent = `Label ${state.pageIndex + 1} of ${count}`;
+    ui.pageNumber.textContent = `Page ${state.pageIndex + 1} of ${count}`;
     ui.previousPage.disabled = state.pageIndex === 0;
     ui.nextPage.disabled = state.pageIndex === count - 1;
     // A button disabled while focused would drop keyboard focus, so it moves to the other one.
@@ -518,9 +518,9 @@ export function createLabelPanel({
     updateButtons();
     try {
       const pages = await renderDesign(current, media);
-      const labels = Array.from({ length: count }, () => pages).flat();
-      await printer.print(labels);
-      ui.status.textContent = labels.length === 1 ? "Printed." : `Printed ${labels.length} labels.`;
+      const all = Array.from({ length: count }, () => pages).flat();
+      await printer.print(all);
+      ui.status.textContent = all.length === 1 ? "Printed." : `Printed ${all.length} pages.`;
     } catch (error) {
       ui.status.textContent = problemMessage(error);
     } finally {
@@ -541,7 +541,7 @@ export function createLabelPanel({
     }
     printList.add(current, count);
     ui.status.textContent =
-      count === 1 ? "Added to the print list." : `Added ${count} labels to the print list.`;
+      count === 1 ? "Added to the print list." : `Added ${count} pages to the print list.`;
   }
 
   /**
@@ -603,12 +603,8 @@ export function createLabelPanel({
     ui.print.disabled =
       nothingToPrint || !state.page || state.printing || printer.state.kind === "connecting";
     const current = design();
-    const labels = count * (current ? pageCount(current, labelSize.current) : 1);
-    ui.print.textContent = state.printing
-      ? "Printing…"
-      : labels === 1
-        ? "Print label"
-        : `Print ${labels} labels`;
+    const pages = count * (current ? pageCount(current, labelSize.current) : 1);
+    ui.print.textContent = state.printing ? "Printing…" : pages === 1 ? "Print" : `Print ${pages} pages`;
   }
 
   /* Events */
