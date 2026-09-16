@@ -136,7 +136,7 @@ export class PrinterConnection extends EventTarget {
       if (errors.length > 0) {
         this.#setState({ kind: "error", printer: driver.name, message: errors.join(", ") });
       } else if (!media) {
-        this.#setState({ kind: "error", printer: driver.name, message: "Unrecognized label roll" });
+        this.#setState({ kind: "error", printer: driver.name, message: "Unrecognized roll" });
       } else {
         this.#setState({ kind: "ready", printer: driver.name, media });
       }

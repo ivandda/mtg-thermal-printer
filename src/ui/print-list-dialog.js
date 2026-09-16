@@ -9,7 +9,7 @@ import { preparePrinter } from "./printer-button.js";
 import { bindStepper } from "./stepper.js";
 
 /**
- * The print list, in a side sheet: saved labels with their copies, printed together in one job.
+ * The print list, in a side sheet: saved items with their copies, printed together in one job.
  * @param {object} options
  * @param {PrinterConnection} options.printer
  * @param {LabelSize} options.labelSize
@@ -130,7 +130,7 @@ export function createPrintListDialog({ printer, labelSize, printList, onEdit })
     part(".list-detail").textContent = detail;
 
     const preview = /** @type {HTMLCanvasElement} */ (part("canvas"));
-    preview.setAttribute("aria-label", `Label preview of ${name}`);
+    preview.setAttribute("aria-label", `Preview of ${name}`);
     renderDesign(item.design, media)
       .then(([page]) => drawBitmap(preview, page))
       .catch(() => {
@@ -177,7 +177,7 @@ export function createPrintListDialog({ printer, labelSize, printList, onEdit })
         for (let copy = 0; copy < item.copies; copy++) pages.push(...rendered);
       }
       await printer.print(pages);
-      ui.status.textContent = pages.length === 1 ? "Printed." : `Printed ${pages.length} labels.`;
+      ui.status.textContent = pages.length === 1 ? "Printed." : `Printed ${pages.length} pages.`;
     } catch (error) {
       ui.status.textContent = problemMessage(error);
     } finally {
@@ -188,12 +188,9 @@ export function createPrintListDialog({ printer, labelSize, printList, onEdit })
 
   function updatePrintAll() {
     const media = labelSize.current;
-    const labels = printList.items.reduce(
-      (sum, item) => sum + item.copies * pageCount(item.design, media),
-      0,
-    );
-    // On die-cut labels the number of labels already says how much of the roll is used.
-    ui.paper.hidden = labels === 0 || media.lengthMm > 0;
+    const pages = printList.items.reduce((sum, item) => sum + item.copies * pageCount(item.design, media), 0);
+    // On die-cut labels the page count already says how much of the roll is used.
+    ui.paper.hidden = pages === 0 || media.lengthMm > 0;
     if (!ui.paper.hidden) {
       ui.paper.textContent = `Uses about ${formatLength(paperLength(printList.items, media))} of the roll.`;
     }
@@ -202,12 +199,8 @@ export function createPrintListDialog({ printer, labelSize, printList, onEdit })
       ui.printAll.textContent = "Printing needs Chrome or Edge";
       return;
     }
-    ui.printAll.disabled = printing || labels === 0 || printer.state.kind === "connecting";
-    ui.printAll.textContent = printing
-      ? "Printing…"
-      : labels === 1
-        ? "Print 1 label"
-        : `Print ${labels} labels`;
+    ui.printAll.disabled = printing || pages === 0 || printer.state.kind === "connecting";
+    ui.printAll.textContent = printing ? "Printing…" : pages === 1 ? "Print 1 page" : `Print ${pages} pages`;
   }
 
   showCount();
