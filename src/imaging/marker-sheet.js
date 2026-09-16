@@ -13,6 +13,9 @@ const SIZES = {
 };
 /** Length of a continuous label that has no markers on it yet. */
 const EMPTY_LENGTH_MM = 20;
+
+/** How long a strip of markers grows on a continuous roll before the next strip starts. */
+const MAX_ROLL_LENGTH_MM = 300;
 /** Dashed lines to cut or fold along, in millimetres. */
 export const CUT_LINE = { width: 0.3, dash: 1.2, gap: 0.9 };
 const REMINDER_LINES = 4;
@@ -69,6 +72,10 @@ export function layoutMarkers(counts, media, custom = []) {
       rows.push(markers.slice(start, start + perRow));
   }
 
+  // A continuous roll has no length of its own, so markers are cut into strips this long. Any
+  // longer and the printer refuses the page: the smallest maximum is 11811 dots, about a metre.
+  const limit = frame.height || Math.round(MAX_ROLL_LENGTH_MM * dotsPerMm);
+
   /** @type {MarkerPage[]} */
   const pages = [];
   /** @type {PlacedMarker[]} */
@@ -82,8 +89,8 @@ export function layoutMarkers(counts, media, custom = []) {
     used = 0;
   };
   for (const row of rows) {
-    const rowHeight = Math.min(row[0].height, frame.height || Infinity);
-    if (frame.height && placed.length > 0 && used + rowHeight > frame.height) finishPage();
+    const rowHeight = Math.min(row[0].height, limit);
+    if (placed.length > 0 && used + rowHeight > limit) finishPage();
     row.forEach(({ marker, unit }, index) => {
       const left = Math.round((index * frame.width) / row.length);
       const right = Math.round(((index + 1) * frame.width) / row.length);
