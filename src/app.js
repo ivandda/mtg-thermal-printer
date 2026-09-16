@@ -21,7 +21,17 @@ const printer = new PrinterConnection();
 const labelSize = new LabelSize(printer);
 const printList = new PrintList();
 
-const views = createViews();
+/** What the print list says when changing a label ends. */
+const ENDINGS = {
+  saved: "Changes saved.",
+  cancelled: undefined,
+  gone: "That label had already been removed from the list.",
+  dropped: undefined,
+};
+
+/** Set while one label is swapped for another, so ending the first doesn't reopen the list. */
+let switchingLabels = false;
+const views = createViews({ onClose: () => panel.cancelEdit() });
 /** The Markers tab's own selection, put back if changing a marker sheet is cancelled.
  * @type {MarkerSelection | undefined} */
 let markersBeforeEdit;
@@ -36,11 +46,14 @@ const panel = createLabelPanel({
     tokens.createFrom(card, face);
     modes.show("create");
   },
-  onEditEnd(saved, id) {
-    if (!saved && markersBeforeEdit) markers.show(markersBeforeEdit);
+  onEditEnd(result, id) {
+    if (result !== "saved" && markersBeforeEdit) markers.show(markersBeforeEdit);
     markersBeforeEdit = undefined;
     modes.refreshBack();
-    list.open(id, saved ? "Changes saved." : undefined);
+    if (switchingLabels || result === "dropped") return;
+    // Escape ends the edit while the key is still being handled, so the sheet is opened after it.
+    // Opening it inside the keypress would let the same Escape close it again.
+    setTimeout(() => list.open(id, ENDINGS[result]), 0);
   },
 });
 const tokens = createTokenEditor({
@@ -82,6 +95,10 @@ const list = createPrintListDialog({
   labelSize,
   printList,
   onEdit({ design, ...item }) {
+    // Changing another label first leaves the one in hand as it was, without reopening the list.
+    switchingLabels = true;
+    panel.cancelEdit();
+    switchingLabels = false;
     if (design.type === "token") {
       modes.show("create");
       tokens.show(tokenOf(design));
@@ -99,7 +116,6 @@ const list = createPrintListDialog({
   },
 });
 const back = element("#back", HTMLButtonElement);
-back.addEventListener("click", () => panel.cancelEdit());
 
 bindPrinterButton(printer, panel.showStatus);
 

@@ -45,11 +45,14 @@ export class PrintList extends EventTarget {
    * @param {string} id
    * @param {Design} design
    * @param {number} copies
+   * @returns {boolean}  Whether the label was still in the list.
    */
   replace(id, design, copies) {
+    if (!this.items.some((item) => item.id === id)) return false;
     this.#update(
       this.items.map((item) => (item.id === id ? { ...item, design, copies: clampCopies(copies) } : item)),
     );
+    return true;
   }
 
   /** @param {string} id */

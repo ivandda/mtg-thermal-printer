@@ -3,8 +3,10 @@ import { element } from "./dom.js";
 /**
  * On small screens the results and the label take turns filling the screen. Opening the label adds
  * a history entry, so the browser's back button returns to the results where they were left.
+ * @param {object} [options]
+ * @param {() => void} [options.onClose]  The label is no longer shown, however it was left.
  */
-export function createViews() {
+export function createViews({ onClose } = {}) {
   const narrowScreen = matchMedia("(max-width: 52rem)");
   const results = element("#results", HTMLUListElement);
   const cardName = element("#card-name", HTMLElement);
@@ -42,6 +44,8 @@ export function createViews() {
   function showResults() {
     if (document.body.dataset.view !== "label") return;
     document.body.dataset.view = "results";
+    // Escape and the browser's back button come through here too, not just the Back button.
+    onClose?.();
     if (!narrowScreen.matches) return;
     window.scrollTo(0, resultsScrollY);
     const chosen = results.querySelector('[aria-pressed="true"]');
